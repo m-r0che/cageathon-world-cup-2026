@@ -22,11 +22,13 @@ COMPETITION_ID = "2000"        # football-data.org World Cup
 DRAW_SEED = "cage-cup-2026"    # changing this re-derives the draw
 TOURNAMENT_START = "2026-06-11"
 
-# Poll football-data every 15 min.
-# Secret needed:  wrangler secret put FOOTBALL_DATA_API_KEY
-# Admin secret:   wrangler secret put ADMIN_TOKEN
+# Poll football-data every 30 min — stays under the free tier's 50-req/day cap
+# (48 req/day) while still giving near-real-time updates during match windows.
+# Secrets needed:
+#   wrangler secret put FOOTBALL_DATA_API_KEY
+#   wrangler secret put ADMIN_TOKEN
 [triggers]
-crons = ["*/15 * * * *"]
+crons = ["*/30 * * * *"]
 
 [observability]
 enabled = true

@@ -16,7 +16,7 @@
 import { TEAMS } from "./lib/teams.ts";
 import { FILMS } from "./lib/films.ts";
 import { runDraw, type Draw, type Player } from "./lib/draw.ts";
-import { fetchMatches, type NormalisedMatch } from "./lib/football-data.ts";
+import { fetchMatches, getUnmappedTlas, type NormalisedMatch } from "./lib/football-data.ts";
 import { computeStandings } from "./lib/scoring.ts";
 import { dailySpotlight } from "./lib/cage.ts";
 
@@ -73,7 +73,10 @@ async function getMatches(env: Env): Promise<NormalisedMatch[]> {
 
 async function refreshMatches(env: Env): Promise<{ count: number; updated: string }> {
   if (!env.FOOTBALL_DATA_API_KEY) {
-    throw new Error("FOOTBALL_DATA_API_KEY not configured");
+    throw new Error(
+      "FOOTBALL_DATA_API_KEY not set. For local dev add it to .dev.vars; " +
+      "for production run `wrangler secret put FOOTBALL_DATA_API_KEY`.",
+    );
   }
   const matches = await fetchMatches(env.FOOTBALL_DATA_API_KEY, env.COMPETITION_ID);
   const updated = new Date().toISOString();
@@ -83,7 +86,13 @@ async function refreshMatches(env: Env): Promise<{ count: number; updated: strin
 }
 
 function isAdmin(req: Request, env: Env): boolean {
-  if (!env.ADMIN_TOKEN) return false;
+  if (!env.ADMIN_TOKEN) {
+    console.warn(
+      "[auth] ADMIN_TOKEN not set; all admin endpoints will 401. " +
+      "Set via `wrangler secret put ADMIN_TOKEN` (or .dev.vars locally).",
+    );
+    return false;
+  }
   const auth = req.headers.get("authorization") ?? "";
   const token = auth.replace(/^Bearer\s+/i, "").trim();
   return token === env.ADMIN_TOKEN;
@@ -151,6 +160,29 @@ const handlers: Record<string, (req: Request, env: Env) => Promise<Response>> = 
     return json({ ok: true, players: body });
   },
 
+  // Admin diagnostics — surfaces football-data TLAs that didn't map to one of our 48 teams.
+  // Refresh once via /api/refresh then check here; any matches involving an unknown team
+  // are silently dropped from scoring, so this is the canary.
+  "GET /api/diagnostics": async (req, env) => {
+    if (!isAdmin(req, env)) return unauthorised();
+    const matches = await getMatches(env);
+    const draw = await getDraw(env);
+    const drawnCodes = new Set((draw?.picks ?? []).map((p) => p.team));
+    const matchesWithUnmapped = matches
+      .filter((m) => m.homeCode === null || m.awayCode === null)
+      .map((m) => ({ id: m.id, utcDate: m.utcDate, stage: m.stage, group: m.group }));
+    const teamsNeverInMatchData = [...drawnCodes].filter(
+      (code) => !matches.some((m) => m.homeCode === code || m.awayCode === code),
+    );
+    return json({
+      unmappedTlas: getUnmappedTlas(),
+      matchesWithUnmapped,
+      teamsNeverInMatchData,
+      totalMatches: matches.length,
+      lastUpdated: (await env.WC.get("last_updated")) ?? null,
+    });
+  },
+
   // Manual matches override — useful for local testing and as a break-glass if football-data is down.
   "PUT /api/matches": async (req, env) => {
     if (!isAdmin(req, env)) return unauthorised();
@@ -166,6 +198,12 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
     if (url.pathname.startsWith("/api/")) {
+      // Fail fast on missing/placeholder bindings — gives a usable error instead of a Cloudflare-internal one.
+      if (!env.WC) {
+        return json({
+          error: "KV namespace `WC` is not bound. Run `wrangler kv namespace create WC` and paste the id into wrangler.toml.",
+        }, { status: 500 });
+      }
       const key = `${req.method} ${url.pathname}`;
       const handler = handlers[key];
       if (!handler) return json({ error: "not found" }, { status: 404 });
@@ -180,13 +218,13 @@ export default {
   },
 
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    // During the tournament window, pull every tick. Out of window, throttle by skipping
-    // most ticks to stay well under the free tier limit.
-    const now = new Date();
-    const start = new Date(env.TOURNAMENT_START);
-    const end = new Date(start.getTime() + 35 * 24 * 60 * 60 * 1000); // ~5 weeks
-    const inWindow = now >= start && now <= end;
-    if (!inWindow && now.getUTCMinutes() % 60 !== 0) return;
-    ctx.waitUntil(refreshMatches(env).catch(() => undefined));
+    // 30-min cron always; football-data free tier is 50 req/day, this lands at 48.
+    // Log failures so they surface in `wrangler tail` — silent swallow would hide outages.
+    ctx.waitUntil(
+      refreshMatches(env).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[cron] refreshMatches failed:", msg);
+      }),
+    );
   },
 };

@@ -11,15 +11,45 @@ Runs entirely on Cloudflare: Worker + Static Assets + KV + Cron Trigger. No thir
 - **Cron trigger** every 15 min → pulls football-data.org
 - **Vanilla HTML/CSS/JS** frontend in `public/` — no build step, mobile-first
 
-## Bootstrap
+## Bootstrap (production)
 
 ```bash
 npm install
-wrangler kv namespace create WC                # paste id into wrangler.toml
-wrangler kv namespace create WC --preview      # paste preview_id too
+
+# 1. KV — note the namespace IDs printed, paste them into wrangler.toml
+wrangler kv namespace create WC
+wrangler kv namespace create WC --preview
+
+# 2. Secrets
 wrangler secret put FOOTBALL_DATA_API_KEY      # free key from football-data.org
 wrangler secret put ADMIN_TOKEN                # any long random string
+
+# 3. Deploy
+npx wrangler deploy
+
+# 4. Lock in the draw (idempotent — needs ?force=1 to overwrite)
+curl -X POST https://cageathon-world-cup-2026.<acct>.workers.dev/api/draw \
+  -H "authorization: Bearer $ADMIN_TOKEN"
+
+# 5. Pull live match data
+curl -X POST https://cageathon-world-cup-2026.<acct>.workers.dev/api/refresh \
+  -H "authorization: Bearer $ADMIN_TOKEN"
 ```
+
+### Local dev
+
+```bash
+echo 'ADMIN_TOKEN=local-dev-token' > .dev.vars
+echo 'FOOTBALL_DATA_API_KEY=<optional-key>' >> .dev.vars     # omit if testing offline
+npx wrangler dev
+# open http://localhost:8787 and POST /api/draw with Bearer local-dev-token
+```
+
+### Verify everything is wired
+
+After the first `/api/refresh`, GET `/api/diagnostics` (admin) to confirm
+football-data's team codes all map to our 48 teams. Any TLAs listed in
+`unmappedTlas` need to be added to `TLA_OVERRIDES` in `src/lib/football-data.ts`.
 
 ## Configure the roster
 
