@@ -230,18 +230,25 @@ function renderMatches(state) {
     const score = finished
       ? `<span class="score">${m.homeGoals}–${m.awayGoals}</span>`
       : `<span class="score scheduled">${fmtKickoff(m.utcDate)}</span>`;
+    const nameMarkup = (t, code) => {
+      // Full name on wide screens, 3-letter code on narrow — keeps cards
+      // single-line on phones without ever ellipsing the name.
+      const full = t?.name ?? code ?? "TBD";
+      const short = t?.code ?? code ?? "TBD";
+      return `<span class="tla"><span class="long">${full}</span><span class="short">${short}</span></span>`;
+    };
     return `
       <li>
         <span class="when">${m.utcDate.slice(5, 10)}</span>
         <span class="side home">
           <span class="flag">${home?.flag ?? "🏳️"}</span>
-          <span class="tla">${home?.name ?? m.homeCode ?? "TBD"}</span>
+          ${nameMarkup(home, m.homeCode)}
           <span class="owner-dot" style="background:${ownerColor(m.homeCode)}"></span>
         </span>
         ${score}
         <span class="side away">
           <span class="owner-dot" style="background:${ownerColor(m.awayCode)}"></span>
-          <span class="tla">${away?.name ?? m.awayCode ?? "TBD"}</span>
+          ${nameMarkup(away, m.awayCode)}
           <span class="flag">${away?.flag ?? "🏳️"}</span>
         </span>
         <span class="stage">${m.stage.replace(/_/g, " ")}${m.group ? " · " + m.group : ""}</span>
