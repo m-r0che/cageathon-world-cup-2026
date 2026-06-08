@@ -20,7 +20,7 @@ preview_id = "2c364ddd9f41462a904bc1ea18cc32cd"
 
 [vars]
 COMPETITION_ID = "2000"        # football-data.org World Cup
-DRAW_SEED = "cage-cup-2026"    # changing this re-derives the draw
+DRAW_SEED = "cageathon-reveal-2026"  # changing this re-derives the draw (requires POST /api/draw?force=1)
 TOURNAMENT_START = "2026-06-11"
 
 # Poll football-data every hour — 24 req/day leaves comfortable headroom under
