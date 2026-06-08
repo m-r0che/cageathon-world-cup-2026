@@ -51,6 +51,17 @@ After the first `/api/refresh`, GET `/api/diagnostics` (admin) to confirm
 football-data's team codes all map to our 48 teams. Any TLAs listed in
 `unmappedTlas` need to be added to `TLA_OVERRIDES` in `src/lib/football-data.ts`.
 
+### Record the draw video (for WhatsApp etc.)
+
+```bash
+npm run record:draw
+```
+
+Spawns wrangler if it's not already running, drives a headless Chromium via
+Playwright at 1280×720 with `?record=1` (which auto-opens The Draw tab and
+hides the daily strip + Cage scatter for a clean frame), then transcodes the
+captured webm to mp4 via ffmpeg. Output: `recordings/draw.mp4` (~1.2 MB, ~19s).
+
 ## Configure the roster
 
 Edit `DEFAULT_PLAYERS` in `src/worker.ts` (names, colours) and drop avatars in `public/players/` as `p1.png` … `p5.png`. Or set them at runtime:

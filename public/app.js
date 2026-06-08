@@ -1,7 +1,14 @@
-// Cage Cup 2026 frontend.
+// Cageathon World Cup 2026 frontend.
 // Vanilla JS, no build step. Fetches /api/state, renders race + tabs.
 
 const REFRESH_MS = 60_000;
+
+// ?record=1 mode: scripts/record-draw.mjs uses this to capture a clean video of the
+// draw animation. We hide the daily spotlight strip and the desktop scatter, then
+// programmatically open The Draw tab once state has loaded — which kicks off the
+// auto-play branch already in bindTabs.
+const RECORD_MODE = new URLSearchParams(location.search).get("record") === "1";
+if (RECORD_MODE) document.body.classList.add("recording");
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -499,7 +506,14 @@ async function tick() {
 }
 
 bindTabs();
-tick();
+tick().then(() => {
+  // Recording mode: once the first state is in, switch to The Draw tab so the
+  // existing auto-play kicks in and the recorder captures a fresh animation.
+  if (RECORD_MODE) {
+    const drawTab = document.querySelector('[data-tab="draw"]');
+    if (drawTab) drawTab.click();
+  }
+});
 setInterval(tick, REFRESH_MS);
 // also tick on visibility regain so phone users see fresh data immediately
 document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });

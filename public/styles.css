@@ -34,6 +34,15 @@ html, body {
 
 body { padding: calc(var(--safe-top) + 8px) 0 calc(var(--safe-bot) + 8px); }
 
+/* Recording mode: trims chrome that isn't part of the draw reveal so the video
+   frames are clean. Toggled by ?record=1 (see app.js + scripts/record-draw.mjs). */
+body.recording .cage-strip,
+body.recording .cage-scatter,
+body.recording footer,
+body.recording .draw-head .ghost-btn,
+body.recording .draw-head .lede { display: none !important; }
+body.recording .squads { display: none !important; }
+
 /* Desktop-only scattered Cage polaroids down the left/right margins ----- */
 .cage-scatter {
   position: fixed;
@@ -87,7 +96,7 @@ code { background: var(--bg-elev-2); padding: 1px 6px; border-radius: 4px; font-
 /* Top bar ----------------------------------------------------------- */
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 20px 0;
+  padding: 14px 20px 10px 0px;
   position: sticky; top: 0; z-index: 20;
   backdrop-filter: blur(14px);
   background: linear-gradient(180deg, rgba(10,10,12,0.92), rgba(10,10,12,0.6));

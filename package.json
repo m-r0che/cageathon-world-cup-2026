@@ -9,10 +9,12 @@
     "tail": "wrangler tail",
     "kv:list": "wrangler kv key list --binding WC",
     "draw": "node scripts/run-draw.mjs",
+    "record:draw": "node scripts/record-draw.mjs",
     "types": "wrangler types"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260101.0",
+    "playwright": "^1.60.0",
     "typescript": "^5.6.3",
     "wrangler": "^4.98.0"
   }
