@@ -8,7 +8,6 @@
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
     "kv:list": "wrangler kv key list --binding WC",
-    "draw": "node scripts/run-draw.mjs",
     "record:draw": "node scripts/record-draw.mjs",
     "types": "wrangler types"
   },
