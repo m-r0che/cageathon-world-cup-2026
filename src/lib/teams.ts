@@ -1,8 +1,10 @@
-// The 48 confirmed qualifiers for the 2026 FIFA World Cup, grouped into 4 quality pots.
-// Confederation breakdown (per Wikipedia, post-Dec-2025 draw):
-//   UEFA 16, CONMEBOL 6, CONCACAF 6, CAF 10, AFC 9, OFC 1 = 48
+// The 48 confirmed qualifiers for the 2026 FIFA World Cup, grouped into the OFFICIAL
+// pots used at the FIFA Final Draw on 5 December 2025. Pots 1-3 are FIFA-ranking based
+// (hosts USA/MEX/CAN seeded into Pot 1); Pot 4 contains the playoff entrants (4 UEFA
+// path winners + 2 inter-confederation playoff winners) plus 6 lower-ranked qualifiers.
 //
-// Pot assignment uses FIFA-ranking tier + hosting status. Hosts (USA/MEX/CAN) sit in Pot 1.
+// Confederation breakdown:
+//   UEFA 16, CONMEBOL 6, CONCACAF 6, CAF 10, AFC 9, OFC 1 = 48
 
 export type PotIndex = 1 | 2 | 3 | 4;
 
@@ -30,45 +32,48 @@ export const TEAMS: Team[] = [
 
   // ─── Pot 2 — strong sides (12) ──────────────────────────────────────────────
   { code: "CRO", name: "Croatia",     pot: 2, flag: "🇭🇷" },
-  { code: "SUI", name: "Switzerland", pot: 2, flag: "🇨🇭" },
-  { code: "NOR", name: "Norway",      pot: 2, flag: "🇳🇴" },
-  { code: "TUR", name: "Türkiye",     pot: 2, flag: "🇹🇷" },
-  { code: "URU", name: "Uruguay",     pot: 2, flag: "🇺🇾" },
-  { code: "COL", name: "Colombia",    pot: 2, flag: "🇨🇴" },
-  { code: "JPN", name: "Japan",       pot: 2, flag: "🇯🇵" },
-  { code: "KOR", name: "South Korea", pot: 2, flag: "🇰🇷" },
-  { code: "IRN", name: "Iran",        pot: 2, flag: "🇮🇷" },
-  { code: "AUS", name: "Australia",   pot: 2, flag: "🇦🇺" },
   { code: "MAR", name: "Morocco",     pot: 2, flag: "🇲🇦" },
+  { code: "COL", name: "Colombia",    pot: 2, flag: "🇨🇴" },
+  { code: "URU", name: "Uruguay",     pot: 2, flag: "🇺🇾" },
+  { code: "SUI", name: "Switzerland", pot: 2, flag: "🇨🇭" },
+  { code: "JPN", name: "Japan",       pot: 2, flag: "🇯🇵" },
   { code: "SEN", name: "Senegal",     pot: 2, flag: "🇸🇳" },
+  { code: "IRN", name: "Iran",        pot: 2, flag: "🇮🇷" },
+  { code: "KOR", name: "South Korea", pot: 2, flag: "🇰🇷" },
+  { code: "ECU", name: "Ecuador",     pot: 2, flag: "🇪🇨" },
+  { code: "AUT", name: "Austria",     pot: 2, flag: "🇦🇹" },
+  { code: "AUS", name: "Australia",   pot: 2, flag: "🇦🇺" },
 
   // ─── Pot 3 — mid-tier / dark horses (12) ────────────────────────────────────
-  { code: "AUT", name: "Austria",       pot: 3, flag: "🇦🇹" },
-  { code: "CZE", name: "Czech Republic",pot: 3, flag: "🇨🇿" },
-  { code: "SCO", name: "Scotland",      pot: 3, flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿" },
-  { code: "SWE", name: "Sweden",        pot: 3, flag: "🇸🇪" },
-  { code: "ECU", name: "Ecuador",       pot: 3, flag: "🇪🇨" },
-  { code: "PAR", name: "Paraguay",      pot: 3, flag: "🇵🇾" },
+  { code: "NOR", name: "Norway",        pot: 3, flag: "🇳🇴" },
+  { code: "PAN", name: "Panama",        pot: 3, flag: "🇵🇦" },
   { code: "EGY", name: "Egypt",         pot: 3, flag: "🇪🇬" },
   { code: "ALG", name: "Algeria",       pot: 3, flag: "🇩🇿" },
+  { code: "SCO", name: "Scotland",      pot: 3, flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿" },
+  { code: "PAR", name: "Paraguay",      pot: 3, flag: "🇵🇾" },
   { code: "TUN", name: "Tunisia",       pot: 3, flag: "🇹🇳" },
-  { code: "GHA", name: "Ghana",         pot: 3, flag: "🇬🇭" },
   { code: "CIV", name: "Ivory Coast",   pot: 3, flag: "🇨🇮" },
+  { code: "UZB", name: "Uzbekistan",    pot: 3, flag: "🇺🇿" },
+  { code: "QAT", name: "Qatar",         pot: 3, flag: "🇶🇦" },
   { code: "SAU", name: "Saudi Arabia",  pot: 3, flag: "🇸🇦" },
+  { code: "RSA", name: "South Africa",  pot: 3, flag: "🇿🇦" },
 
-  // ─── Pot 4 — minnows & debutants (12) ───────────────────────────────────────
-  { code: "BIH", name: "Bosnia & Herz.",pot: 4, flag: "🇧🇦" },
-  { code: "NZL", name: "New Zealand",   pot: 4, flag: "🇳🇿" },
-  { code: "PAN", name: "Panama",        pot: 4, flag: "🇵🇦" },
-  { code: "CUW", name: "Curaçao",       pot: 4, flag: "🇨🇼" },
-  { code: "HAI", name: "Haiti",         pot: 4, flag: "🇭🇹" },
-  { code: "QAT", name: "Qatar",         pot: 4, flag: "🇶🇦" },
-  { code: "IRQ", name: "Iraq",          pot: 4, flag: "🇮🇶" },
-  { code: "UZB", name: "Uzbekistan",    pot: 4, flag: "🇺🇿" },
-  { code: "JOR", name: "Jordan",        pot: 4, flag: "🇯🇴" },
-  { code: "COD", name: "DR Congo",      pot: 4, flag: "🇨🇩" },
-  { code: "RSA", name: "South Africa",  pot: 4, flag: "🇿🇦" },
-  { code: "CPV", name: "Cape Verde",    pot: 4, flag: "🇨🇻" },
+  // ─── Pot 4 — playoff entrants + lowest-ranked (12) ─────────────────────────
+  // 4 UEFA Path winners (BIH, CZE, SWE, TUR) + 2 IC Playoff winners (IRQ, COD)
+  // were TBD at draw time and auto-allocated to Pot 4 alongside the 6 lowest-
+  // ranked direct qualifiers.
+  { code: "JOR", name: "Jordan",         pot: 4, flag: "🇯🇴" },
+  { code: "CPV", name: "Cape Verde",     pot: 4, flag: "🇨🇻" },
+  { code: "GHA", name: "Ghana",          pot: 4, flag: "🇬🇭" },
+  { code: "CUW", name: "Curaçao",        pot: 4, flag: "🇨🇼" },
+  { code: "HAI", name: "Haiti",          pot: 4, flag: "🇭🇹" },
+  { code: "NZL", name: "New Zealand",    pot: 4, flag: "🇳🇿" },
+  { code: "BIH", name: "Bosnia & Herz.", pot: 4, flag: "🇧🇦" },  // UEFA path
+  { code: "CZE", name: "Czech Republic", pot: 4, flag: "🇨🇿" },  // UEFA path
+  { code: "SWE", name: "Sweden",         pot: 4, flag: "🇸🇪" },  // UEFA path
+  { code: "TUR", name: "Türkiye",        pot: 4, flag: "🇹🇷" },  // UEFA path
+  { code: "IRQ", name: "Iraq",           pot: 4, flag: "🇮🇶" },  // IC playoff
+  { code: "COD", name: "DR Congo",       pot: 4, flag: "🇨🇩" },  // IC playoff
 ];
 
 export const POTS: Record<PotIndex, Team[]> = {
