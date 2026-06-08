@@ -8,6 +8,7 @@ import { TEAMS } from "./teams.ts";
 
 export type MatchStage =
   | "GROUP_STAGE"
+  | "LAST_32"           // new in 2026: top 32 advance from groups
   | "LAST_16"
   | "QUARTER_FINALS"
   | "SEMI_FINALS"
@@ -41,10 +42,9 @@ export interface NormalisedMatch {
 const TLA_OVERRIDES: Record<string, string> = {
   KSA: "SAU",   // Saudi Arabia
   CTA: "CIV",   // Côte d'Ivoire (Ivory Coast)
-  RSA: "RSA",   // South Africa (identity, listed for clarity)
   CGO: "COD",   // football-data sometimes uses CGO for DR Congo
-  CRC: "CRC",   // Costa Rica isn't in 2026 but mapped for safety
   HTI: "HAI",   // Haiti (FIFA: HAI, IOC: HAI/HTI variants)
+  URY: "URU",   // Uruguay — verified against live 2026 data (ISO vs FIFA)
 };
 
 // Tracks any TLA we saw in real match data that didn't map to one of our 48 teams.

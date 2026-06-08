@@ -16,8 +16,10 @@
 // every player gets a roughly equal multiplier budget. See draw.ts for the balance trick.
 //
 // Tournament progression bonuses (awarded once each, NOT multiplied — they recognise the
-// achievement of advancing, not film luck):
-//   Reached Round of 16:  +4
+// achievement of advancing, not film luck). 2026 has a Round of 32 because 32 teams
+// advance from the group stage; getting out of groups is its own milestone:
+//   Reached Round of 32:  +2   (made the knockouts)
+//   Reached Round of 16:  +4   (won a knockout)
 //   Reached Quarter:      +6
 //   Reached Semi:        +10
 //   Reached Final:       +15
@@ -55,6 +57,7 @@ export interface Standings {
 }
 
 const PROGRESSION = {
+  LAST_32: 2,
   LAST_16: 4,
   QUARTER_FINALS: 6,
   SEMI_FINALS: 10,
@@ -63,10 +66,11 @@ const PROGRESSION = {
 } as const;
 
 const STAGE_ORDER: MatchStage[] = [
-  "GROUP_STAGE", "LAST_16", "QUARTER_FINALS", "SEMI_FINALS", "THIRD_PLACE", "FINAL",
+  "GROUP_STAGE", "LAST_32", "LAST_16", "QUARTER_FINALS", "SEMI_FINALS", "THIRD_PLACE", "FINAL",
 ];
 
 function stageIndex(s: MatchStage): number {
+  // THIRD_PLACE is a side show — reaching it means the team made the semis, no further.
   if (s === "THIRD_PLACE") return STAGE_ORDER.indexOf("SEMI_FINALS");
   return STAGE_ORDER.indexOf(s);
 }
@@ -158,15 +162,23 @@ export function computeStandings(
     }
   }
 
-  // Award progression bonuses based on furthest stage reached (cumulative).
+  // Award progression bonuses cumulatively based on the furthest stage each team reached.
+  // Cumulative = a Finalist gets credit for every prior round; the Winner gets all of those
+  // plus the +25 trophy bonus. (THIRD_PLACE is rolled into SEMI_FINALS by stageIndex above.)
+  const cumulative = (target: MatchStage): number => {
+    let sum = 0;
+    if (STAGE_ORDER.indexOf(target) >= STAGE_ORDER.indexOf("LAST_32"))         sum += PROGRESSION.LAST_32;
+    if (STAGE_ORDER.indexOf(target) >= STAGE_ORDER.indexOf("LAST_16"))         sum += PROGRESSION.LAST_16;
+    if (STAGE_ORDER.indexOf(target) >= STAGE_ORDER.indexOf("QUARTER_FINALS"))  sum += PROGRESSION.QUARTER_FINALS;
+    if (STAGE_ORDER.indexOf(target) >= STAGE_ORDER.indexOf("SEMI_FINALS"))     sum += PROGRESSION.SEMI_FINALS;
+    if (STAGE_ORDER.indexOf(target) >= STAGE_ORDER.indexOf("FINAL"))           sum += PROGRESSION.FINAL;
+    return sum;
+  };
   for (const [code, idx] of furthest) {
     const stage = STAGE_ORDER[idx];
     const stats = teamStats.get(code);
-    if (!stats || !stage) continue;
-    if (stage === "LAST_16")        stats.progressionPoints += PROGRESSION.LAST_16;
-    if (stage === "QUARTER_FINALS") stats.progressionPoints += PROGRESSION.LAST_16 + PROGRESSION.QUARTER_FINALS;
-    if (stage === "SEMI_FINALS")    stats.progressionPoints += PROGRESSION.LAST_16 + PROGRESSION.QUARTER_FINALS + PROGRESSION.SEMI_FINALS;
-    if (stage === "FINAL")          stats.progressionPoints += PROGRESSION.LAST_16 + PROGRESSION.QUARTER_FINALS + PROGRESSION.SEMI_FINALS + PROGRESSION.FINAL;
+    if (!stats || !stage || stage === "GROUP_STAGE") continue;
+    stats.progressionPoints += cumulative(stage);
   }
   if (winnerCode) {
     const stats = teamStats.get(winnerCode);

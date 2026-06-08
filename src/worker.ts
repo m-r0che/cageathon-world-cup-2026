@@ -160,25 +160,31 @@ const handlers: Record<string, (req: Request, env: Env) => Promise<Response>> = 
     return json({ ok: true, players: body });
   },
 
-  // Admin diagnostics — surfaces football-data TLAs that didn't map to one of our 48 teams.
-  // Refresh once via /api/refresh then check here; any matches involving an unknown team
-  // are silently dropped from scoring, so this is the canary.
+  // Admin diagnostics — health check for the football-data → scoring pipeline.
+  // The critical signal is `unmappedTlas`: any TLA that came back from the API but
+  // didn't map to one of our 48 teams. Empty = healthy.
   "GET /api/diagnostics": async (req, env) => {
     if (!isAdmin(req, env)) return unauthorised();
     const matches = await getMatches(env);
     const draw = await getDraw(env);
     const drawnCodes = new Set((draw?.picks ?? []).map((p) => p.team));
-    const matchesWithUnmapped = matches
-      .filter((m) => m.homeCode === null || m.awayCode === null)
-      .map((m) => ({ id: m.id, utcDate: m.utcDate, stage: m.stage, group: m.group }));
     const teamsNeverInMatchData = [...drawnCodes].filter(
       (code) => !matches.some((m) => m.homeCode === code || m.awayCode === code),
     );
+    // Matches with TBD teams are expected pre-knockout — most knockout slots fill in as
+    // groups conclude. We report a count rather than the full list to keep the response tidy.
+    const tbdMatches = matches.filter((m) => m.homeCode === null || m.awayCode === null);
     return json({
-      unmappedTlas: getUnmappedTlas(),
-      matchesWithUnmapped,
-      teamsNeverInMatchData,
+      // Real problem signals
+      unmappedTlas: getUnmappedTlas(),                  // ← must be empty for healthy scoring
+      teamsNeverInMatchData,                            // ← drawn teams the API never references
+      // Informational
       totalMatches: matches.length,
+      tbdMatchesCount: tbdMatches.length,
+      tbdMatchesByStage: tbdMatches.reduce<Record<string, number>>((acc, m) => {
+        acc[m.stage] = (acc[m.stage] ?? 0) + 1;
+        return acc;
+      }, {}),
       lastUpdated: (await env.WC.get("last_updated")) ?? null,
     });
   },
