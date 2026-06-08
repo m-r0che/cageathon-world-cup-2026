@@ -224,7 +224,7 @@ export default {
   },
 
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    // 30-min cron always; football-data free tier is 50 req/day, this lands at 48.
+    // Hourly cron (24 req/day) — leaves headroom under football-data's 50-req/day free cap.
     // Log failures so they surface in `wrangler tail` — silent swallow would hide outages.
     ctx.waitUntil(
       refreshMatches(env).catch((err: unknown) => {
