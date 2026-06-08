@@ -96,16 +96,35 @@ npx wrangler deploy
 
 ## Scoring summary
 
-| Event                          | Pts |
-|--------------------------------|----:|
-| Group win                      |  +3 |
-| Group draw                     |  +1 |
-| Goal scored                    |  +1 |
-| Clean sheet                    |  +1 |
-| Beat a higher-pot team         |  +3 |
-| Reach R16 / QF / SF / F / Win  |  +4 / +6 / +10 / +15 / +25 |
-| Day's Cage Blessed             |  ×2 base for that match |
-| Day's Cage Cursed              |  ÷2 base for that match |
+Per-match base points (per team):
+
+| Event                            | Pts |
+|----------------------------------|----:|
+| Win                              |  +3 |
+| Draw                             |  +1 |
+| Goal scored (incl. extra time)   |  +1 |
+| Clean sheet                      |  +1 |
+| Beat a higher-pot team           |  +3 |
+
+Final per-match score = `base × team's permanent Cage multiplier`, where the
+multiplier is `0.5 + rt/100` (range ×0.5 to ×1.5), set at draw time. Films are
+inverse-pot paired — Pot 1 teams (strongest) carry the lowest multipliers,
+Pot 4 (weakest) the highest — so each player's expected multiplier budget
+ends up roughly equal regardless of which teams they drew.
+
+Progression bonuses (awarded once each, NOT multiplied):
+
+| Event                               | Pts |
+|-------------------------------------|----:|
+| Reach R32 (out of groups)           |  +2 |
+| Reach R16                           |  +4 |
+| Reach QF                            |  +6 |
+| Reach SF                            | +10 |
+| Reach Final                         | +15 |
+| Win it all                          | +25 |
+
+Knockout matches: AET goals count, penalty-shootout tallies don't. The team
+that advances (per football-data's `score.winner`) gets the +3 win bonus.
 
 Tiebreakers: total points → total goals scored.
 
@@ -115,14 +134,16 @@ Tiebreakers: total points → total goals scored.
 src/
   worker.ts             # routes + cron
   lib/
-    teams.ts            # 48 teams × pot × Cage movie
-    draw.ts             # deterministic snake draft
-    scoring.ts          # standings calc
-    cage.ts             # daily blessing/curse
-    football-data.ts    # API client
+    teams.ts            # 48 teams × pot
+    films.ts            # 48 Cage films + RT scores + multiplier formula
+    draw.ts             # deterministic snake draft + inverse-pot film coupling
+    scoring.ts          # standings calc (incl. AET / PSO handling)
+    cage.ts             # daily Cage Spotlight (informational, no scoring impact)
+    football-data.ts    # API client + TLA reconciliation
     rng.ts              # seeded RNG
 public/
   index.html  styles.css  app.js
-  players/              # drop avatars here
+  cage/                 # decorative Cage portraits for the desktop scatter
+  players/              # drop avatars here (p1.jpg ... p5.jpg)
 wrangler.toml
 ```
