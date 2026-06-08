@@ -7,7 +7,12 @@ const REFRESH_MS = 60_000;
 // draw animation. We hide the daily spotlight strip and the desktop scatter, then
 // programmatically open The Draw tab once state has loaded — which kicks off the
 // auto-play branch already in bindTabs.
-const RECORD_MODE = new URLSearchParams(location.search).get("record") === "1";
+const URL_PARAMS = new URLSearchParams(location.search);
+const RECORD_MODE = URL_PARAMS.get("record") === "1";
+// ?animate=1 → open the Draw tab and replay the animation (for sharing the
+// reveal in a chat). ?record=1 implies it. Without either, the Draw tab just
+// shows the finished squads grid; replay is one click away.
+const ANIMATE_ON_LOAD = RECORD_MODE || URL_PARAMS.get("animate") === "1";
 if (RECORD_MODE) document.body.classList.add("recording");
 
 const $ = (sel) => document.querySelector(sel);
@@ -338,8 +343,10 @@ function renderAll(s) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Has the draw animation auto-played this session?
-let drawAutoPlayed = false;
+// Default to "already played" so opening the Draw tab shows the static
+// squads grid. Auto-play is opt-in via ?animate=1 (or ?record=1), wired up
+// after first state load below.
+let drawAutoPlayed = true;
 let drawAnimRunning = false;
 
 function initials(name) {
@@ -514,9 +521,11 @@ async function tick() {
 
 bindTabs();
 tick().then(() => {
-  // Recording mode: once the first state is in, switch to The Draw tab so the
-  // existing auto-play kicks in and the recorder captures a fresh animation.
-  if (RECORD_MODE) {
+  // Once the first state is in, animate-on-load (via ?animate=1 or
+  // ?record=1) flips the auto-play latch back off and clicks into the Draw
+  // tab — the tab handler then triggers playDrawAnimation().
+  if (ANIMATE_ON_LOAD) {
+    drawAutoPlayed = false;
     const drawTab = document.querySelector('[data-tab="draw"]');
     if (drawTab) drawTab.click();
   }
