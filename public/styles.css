@@ -226,14 +226,16 @@ a.rt:hover, a.rt:focus-visible {
   position: absolute; top: 0; bottom: 0; left: 0;
   border-radius: 10px 0 0 10px;
   background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--lane-color) 60%, transparent));
-  width: 0;
+  width: var(--pct, 0%);
   transition: width 1.4s cubic-bezier(.22,.61,.36,1);
 }
 .lane .avatar-wrap {
   position: absolute; top: 50%;
   transform: translate(-50%, -50%);
   width: 44px; height: 44px;
-  left: 0;
+  /* Clamp so the avatar (44px wide, centred on left%) never clips the race container's
+     left edge. 26px = half-avatar (22) + 4px breathing room. */
+  left: max(26px, var(--pct, 0%));
   transition: left 1.4s cubic-bezier(.22,.61,.36,1);
   filter: drop-shadow(0 6px 12px rgba(0,0,0,0.45));
 }
@@ -263,16 +265,14 @@ a.rt:hover, a.rt:focus-visible {
   100% { transform: scale(1.7); opacity: 0; }
 }
 .lane .pts {
-  position: absolute; left: calc(var(--pct, 0%) + 28px); top: 50%; transform: translateY(-50%);
+  position: absolute;
+  /* Sit just to the right of the (clamped) avatar so they don't separate at score=0. */
+  left: calc(max(26px, var(--pct, 0%)) + 28px);
+  top: 50%; transform: translateY(-50%);
   font-size: 13px; color: var(--text); font-weight: 600;
   background: rgba(0,0,0,0.6); padding: 2px 8px; border-radius: 999px;
   white-space: nowrap;
   transition: left 1.4s cubic-bezier(.22,.61,.36,1);
-}
-.lane .name {
-  position: absolute; left: 8px; top: 4px;
-  font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase;
-  pointer-events: none;
 }
 
 /* Podium (top 3) ---------------------------------------------------- */

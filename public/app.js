@@ -106,14 +106,15 @@ function renderRace(state) {
     lane.style.setProperty("--pct", pct + "%");
 
     const initials = p.name.split(/\s+/).map((s) => s[0]).join("").slice(0, 2).toUpperCase();
+    // Trail width, avatar position, and points-pill position all read --pct via CSS,
+    // including a min-clamp so the avatar never clips the container at score = 0.
     lane.innerHTML = `
-      <span class="name">${p.name}</span>
-      <span class="trail" style="width:${pct}%"></span>
-      <span class="avatar-wrap" style="left:${pct}%">
+      <span class="trail"></span>
+      <span class="avatar-wrap">
         <span class="pulse"></span>
         <span class="avatar fallback">${initials}</span>
       </span>
-      <span class="pts" style="left:calc(${pct}% + 28px)">${total}</span>
+      <span class="pts">${total}</span>
     `;
     // Try to load the real avatar; fall through to initials on error.
     const av = lane.querySelector(".avatar");
