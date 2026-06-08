@@ -1,0 +1,32 @@
+# Cageathon World Cup 2026 — sweepstake worker
+name = "cageathon-world-cup-2026"
+main = "src/worker.ts"
+compatibility_date = "2026-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+# Static frontend (HTML/CSS/JS + player avatars)
+[assets]
+directory = "./public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# KV: draw, matches cache, last_updated, players roster
+# Create with:  wrangler kv namespace create WC
+[[kv_namespaces]]
+binding = "WC"
+id = "REPLACE_WITH_KV_ID"
+preview_id = "REPLACE_WITH_PREVIEW_KV_ID"
+
+[vars]
+COMPETITION_ID = "2000"        # football-data.org World Cup
+DRAW_SEED = "cage-cup-2026"    # changing this re-derives the draw
+TOURNAMENT_START = "2026-06-11"
+
+# Poll football-data every 15 min.
+# Secret needed:  wrangler secret put FOOTBALL_DATA_API_KEY
+# Admin secret:   wrangler secret put ADMIN_TOKEN
+[triggers]
+crons = ["*/15 * * * *"]
+
+[observability]
+enabled = true

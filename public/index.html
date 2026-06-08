@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0c" />
+  <title>Cageathon World Cup 2026</title>
+  <link rel="icon" type="image/jpeg" href="/cage.jpg" />
+  <link rel="apple-touch-icon" href="/cage.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=Inter:wght@400;500;600;700&display=swap"
+  />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <!-- Decorative Cage scatter — desktop only (hidden under ~1200px). -->
+  <div class="cage-scatter" aria-hidden="true">
+    <img class="cs cs-l1" src="/cage/cage1.jpg" alt="" />
+    <img class="cs cs-l2" src="/cage/cage7.jpg" alt="" /> <!-- Unbearable Weight -->
+    <img class="cs cs-l3" src="/cage/cage5.jpg" alt="" />
+    <img class="cs cs-l4" src="/cage/cage8.jpg" alt="" /> <!-- Con Air -->
+    <img class="cs cs-r1" src="/cage/cage2.jpg" alt="" />
+    <img class="cs cs-r2" src="/cage/cage4.jpg" alt="" />
+    <img class="cs cs-r3" src="/cage/cage3.jpg" alt="" />
+    <img class="cs cs-r4" src="/cage/cage6.jpg" alt="" />
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-mark" src="/cage.jpg" alt="Cage" />
+      <span class="brand-name"><em>Cageathon</em> World Cup 2026</span>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="race">The Cup</button>
+      <button class="tab" data-tab="matches">Matches</button>
+      <button class="tab" data-tab="draw">The Draw</button>
+      <button class="tab" data-tab="rules">Rules</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Daily Cage Spotlight — informational only, no scoring impact. -->
+    <section class="cage-strip" id="cage-strip" aria-live="polite">
+      <img class="cage-glyph" src="/cage.jpg" alt="The Cage" />
+      <div class="cage-spotlight">
+        <span class="cage-label">Today's Cage Spotlight</span>
+        <span class="cage-movie" id="spotlight-film">—</span>
+        <span class="cage-meta"  id="spotlight-meta"></span>
+      </div>
+    </section>
+
+    <!-- RACE -->
+    <section class="panel" data-pane="race">
+      <div class="race-head">
+        <h1>The Cup</h1>
+        <div class="race-meta">
+          <span id="updated">—</span>
+          <span class="dot"></span>
+          <span id="leader">—</span>
+        </div>
+      </div>
+      <div class="race" id="race" aria-label="Live standings race">
+        <!-- lanes + gridlines + scale injected -->
+      </div>
+
+      <h2 class="section-h">Standings</h2>
+      <div class="podium" id="podium"></div>
+      <ol class="standings-rest" id="standings-rest"></ol>
+    </section>
+
+    <!-- MATCHES -->
+    <section class="panel hidden" data-pane="matches">
+      <h2 class="section-h">Coming up</h2>
+      <ul class="match-list" id="upcoming"></ul>
+      <h2 class="section-h">Just played</h2>
+      <ul class="match-list" id="recent"></ul>
+    </section>
+
+    <!-- THE DRAW -->
+    <section class="panel hidden" data-pane="draw">
+      <div class="draw-head">
+        <div>
+          <h2 class="section-h" style="margin:0">The Draw</h2>
+          <p class="lede" style="margin:4px 0 0">Snake draft across 4 pots. Lower pot number = stronger seed. Beating a higher pot is worth +3.</p>
+        </div>
+        <button class="ghost-btn" id="replay-draw" type="button">▶ Replay</button>
+      </div>
+      <div class="draw-stage hidden" id="draw-stage" aria-live="polite"></div>
+      <div class="squads" id="squads"></div>
+    </section>
+
+    <!-- RULES -->
+    <section class="panel hidden" data-pane="rules">
+      <h2 class="section-h">How it works</h2>
+      <article class="rules">
+        <h3>The Draw</h3>
+        <p>
+          48 teams are split into 4 quality pots. We snake-draft pot by pot — the player who picks
+          last in pot 1 picks first in pot 2, and so on. The shuffle inside each pot is seeded by
+          <code id="seed-disp">—</code> so the result is reproducible and auditable.
+        </p>
+        <h3>Per-match scoring</h3>
+        <ul>
+          <li>Win <strong>+3</strong>, Draw <strong>+1</strong></li>
+          <li>Goal scored <strong>+1</strong></li>
+          <li>Clean sheet <strong>+1</strong></li>
+          <li>Beat a higher-pot team <strong>+3</strong> (the upset bonus)</li>
+        </ul>
+        <h3>Progression bonuses</h3>
+        <ul>
+          <li>Reach R16 <strong>+4</strong></li>
+          <li>Reach QF <strong>+6</strong></li>
+          <li>Reach SF <strong>+10</strong></li>
+          <li>Reach Final <strong>+15</strong></li>
+          <li>Win it all <strong>+25</strong></li>
+        </ul>
+        <h3>The Cage multiplier</h3>
+        <p>
+          At draw time, each team is paired to a Nicolas Cage film. The film's
+          Rotten Tomatoes Tomatometer becomes a permanent multiplier on the team's
+          match points: <code>0.5 + rt/100</code>, so a 0% film gives ×0.5 and a
+          100% film gives ×1.5. Progression bonuses are <em>not</em> multiplied.
+        </p>
+        <p>
+          To stop anyone winning the lottery: film-pots are inversely paired with
+          team-pots. The strongest teams (Pot 1) draw from the worst films (low
+          multipliers); the weakest teams (Pot 4) draw from the best films (high
+          multipliers). Every player's multiplier budget ends up roughly equal —
+          but <em>which</em> film lands on Argentina is part of the draw drama.
+        </p>
+        <h3>Tiebreakers</h3>
+        <p>Total points → total goals scored by your teams.</p>
+      </article>
+    </section>
+  </main>
+
+  <footer>
+    <span>Updated <span id="updated-foot">—</span></span>
+    <span class="dim">Polls every 15 min during the tournament.</span>
+  </footer>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
