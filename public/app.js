@@ -498,6 +498,9 @@ function bindTabs() {
       const target = btn.dataset.tab;
       $$(".tab").forEach((b) => b.classList.toggle("active", b === btn));
       $$(".panel").forEach((p) => p.classList.toggle("hidden", p.dataset.pane !== target));
+      // Spotlight strip is decorative for The Cup view only — keep the other
+      // tabs (Matches, Draw, Rules) focused on their own content.
+      $("#cage-strip")?.classList.toggle("hidden", target !== "race");
       window.scrollTo({ top: 0, behavior: "smooth" });
 
       // Auto-play the draw animation the first time the user opens The Draw this session.
