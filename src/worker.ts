@@ -71,6 +71,62 @@ async function getMatches(env: Env): Promise<NormalisedMatch[]> {
   try { return JSON.parse(raw) as NormalisedMatch[]; } catch { return []; }
 }
 
+// Backstop window for when football-data's status field lags behind reality
+// (e.g. a kicked-off match still reported as TIMED). It only has to cover the
+// start-of-match lag, NOT the full match — while a game is genuinely in play
+// the IN_PLAY/PAUSED status keeps it live with no time limit, so stoppage,
+// extra time and penalties are all covered by status alone. 4h still spans an
+// entire knockout-to-shootout (~3h end to end, ~3.4h with extreme stoppage)
+// even in the pathological case where the status never updates, plus a tail of
+// "just after" so we catch the settled score and the flip to FINISHED.
+const LIVE_WINDOW_MS = 4 * 60 * 60 * 1000;
+
+function kickoffMs(m: NormalisedMatch): number {
+  const t = Date.parse(m.utcDate);
+  return Number.isNaN(t) ? Infinity : t;
+}
+
+// Terminal / abandoned states that should never show as live or upcoming.
+function isPlayable(m: NormalisedMatch): boolean {
+  return m.status !== "FINISHED" && m.status !== "CANCELLED" &&
+         m.status !== "POSTPONED" && m.status !== "SUSPENDED";
+}
+
+// Is this match in play *right now*? Trust the API's IN_PLAY/PAUSED, but also
+// treat a kicked-off, not-yet-finished match as live for a bounded window —
+// football-data is slow to flip SCHEDULED/TIMED → IN_PLAY, and without this
+// backstop a game that has clearly started lingers in "upcoming" (or vanishes)
+// until the status finally catches up.
+function isLiveAt(m: NormalisedMatch, nowMs: number): boolean {
+  if (m.status === "IN_PLAY" || m.status === "PAUSED") return true;
+  if (!isPlayable(m)) return false;
+  const ko = kickoffMs(m);
+  return ko <= nowMs && nowMs - ko <= LIVE_WINDOW_MS;
+}
+
+// How fresh data needs to be when nothing is live: a baseline keepalive so
+// scheduled kickoff times and newly-populated knockout fixtures don't go stale.
+const BASELINE_REFRESH_MS = 3 * 60 * 60 * 1000;
+// Start polling this far ahead of kickoff so we catch the match going live.
+const KICKOFF_LOOKAHEAD_MS = 20 * 60 * 1000;
+
+// Decide whether a cron tick should actually hit the API. The fixture schedule
+// is known in advance, so the cached snapshot is enough to tell us when a match
+// is live, just finished, or about to start — the moments worth spending a call.
+function shouldPoll(matches: NormalisedMatch[], lastUpdatedIso: string | null, now: Date): boolean {
+  const nowMs = now.getTime();
+  const lastMs = lastUpdatedIso ? Date.parse(lastUpdatedIso) : NaN;
+  // Baseline keepalive (also covers first run / unparseable timestamp).
+  if (Number.isNaN(lastMs) || nowMs - lastMs >= BASELINE_REFRESH_MS) return true;
+  for (const m of matches) {
+    if (!isPlayable(m)) continue;
+    if (isLiveAt(m, nowMs)) return true;                  // in play (or just after) → track the score
+    const ko = kickoffMs(m);
+    if (ko > nowMs && ko - nowMs <= KICKOFF_LOOKAHEAD_MS) return true; // imminent → be ready for kickoff
+  }
+  return false;
+}
+
 async function refreshMatches(env: Env): Promise<{ count: number; updated: string }> {
   if (!env.FOOTBALL_DATA_API_KEY) {
     throw new Error(
@@ -111,14 +167,15 @@ const handlers: Record<string, (req: Request, env: Env) => Promise<Response>> = 
     const today = dailySpotlight(env.DRAW_SEED, now.toISOString());
 
     // Surface live, next 5 and last 5 matches so the home view feels live.
-    // Bucket purely by status (not kickoff time): once a match kicks off its
-    // utcDate is in the past, so a time-based "upcoming" filter would drop it
-    // while it's IN_PLAY/PAUSED yet not FINISHED — making live games vanish.
+    // `isLiveAt` keys off kickoff time as well as status, so a game that has
+    // started can't get stranded in "upcoming" (or fall through to nothing)
+    // while football-data is still reporting it as TIMED.
+    const nowMs = now.getTime();
     const sorted = matches.slice().sort((a, b) => a.utcDate.localeCompare(b.utcDate));
-    const isLive = (m: NormalisedMatch) => m.status === "IN_PLAY" || m.status === "PAUSED";
-    const live = sorted.filter(isLive);
+    const live = sorted.filter((m) => isLiveAt(m, nowMs));
+    const liveIds = new Set(live.map((m) => m.id));
     const upcoming = sorted
-      .filter((m) => m.status === "SCHEDULED" || m.status === "TIMED")
+      .filter((m) => !liveIds.has(m.id) && isPlayable(m) && kickoffMs(m) > nowMs)
       .slice(0, 5);
     const recent = sorted.filter((m) => m.status === "FINISHED").slice(-5).reverse();
 
@@ -231,13 +288,24 @@ export default {
   },
 
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    // Hourly cron (24 req/day) — leaves headroom under football-data's 50-req/day free cap.
+    // The cron ticks every 15 min, but we only spend an API call when it's worth
+    // it (see shouldPoll) — frequent while games are live or imminent, sparse
+    // otherwise — to stay inside football-data's free-tier quota.
     // Log failures so they surface in `wrangler tail` — silent swallow would hide outages.
     ctx.waitUntil(
-      refreshMatches(env).catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error("[cron] refreshMatches failed:", msg);
-      }),
+      (async () => {
+        try {
+          const [matches, lastUpdated] = await Promise.all([
+            getMatches(env),
+            env.WC.get("last_updated"),
+          ]);
+          if (!shouldPoll(matches, lastUpdated, new Date())) return;
+          await refreshMatches(env);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error("[cron] refreshMatches failed:", msg);
+        }
+      })(),
     );
   },
 };
