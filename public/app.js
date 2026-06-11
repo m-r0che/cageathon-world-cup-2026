@@ -226,14 +226,17 @@ function renderMatches(state) {
   const renderRow = (m) => {
     const home = teams.get(m.homeCode);
     const away = teams.get(m.awayCode);
-    // Owner chip: a small color-coded pill with the owning player's initials,
-    // so you can read who has each team straight from the Matches tab without
-    // opening the Draw. Empty string when the team is unowned (e.g. knockout TBD).
-    const ownerChip = (code) => {
+    // Owner tag: a color dot + the owning player's name, so you can read who
+    // has each team straight from the Matches tab without opening the Draw.
+    // Rendered on its own full-width row (below the score) so the player names
+    // never squeeze the team names into truncation on mobile. Always emits a
+    // span (empty when the team is unowned, e.g. knockout TBD) so the home /
+    // away tags keep their left / right alignment.
+    const ownerTag = (code) => {
       const owner = owners.get(code);
       const p = owner ? playersById.get(owner) : null;
-      if (!p) return "";
-      return `<span class="owner-dot" style="background:${p.color}" title="${p.name}">${initials(p.name)}</span>`;
+      if (!p) return `<span class="owner empty"></span>`;
+      return `<span class="owner"><span class="owner-dot" style="background:${p.color}"></span><span class="owner-name">${p.name}</span></span>`;
     };
     const finished = m.status === "FINISHED";
     const score = finished
@@ -252,13 +255,15 @@ function renderMatches(state) {
         <span class="side home">
           <span class="flag">${home?.flag ?? "🏳️"}</span>
           ${nameMarkup(home, m.homeCode)}
-          ${ownerChip(m.homeCode)}
         </span>
         ${score}
         <span class="side away">
-          ${ownerChip(m.awayCode)}
           ${nameMarkup(away, m.awayCode)}
           <span class="flag">${away?.flag ?? "🏳️"}</span>
+        </span>
+        <span class="owners">
+          ${ownerTag(m.homeCode)}
+          ${ownerTag(m.awayCode)}
         </span>
         <span class="stage">${m.stage.replace(/_/g, " ")}${m.group ? " · " + m.group : ""}</span>
       </li>
