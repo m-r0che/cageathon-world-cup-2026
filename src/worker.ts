@@ -71,10 +71,15 @@ async function getMatches(env: Env): Promise<NormalisedMatch[]> {
   try { return JSON.parse(raw) as NormalisedMatch[]; } catch { return []; }
 }
 
-// A match runs ~90–120 min plus half-time and stoppage; 3.5h comfortably covers
-// kickoff → final whistle, with a tail of "just after" so we still catch the
-// settled full-time score and the status flip to FINISHED.
-const LIVE_WINDOW_MS = 3.5 * 60 * 60 * 1000;
+// Backstop window for when football-data's status field lags behind reality
+// (e.g. a kicked-off match still reported as TIMED). It only has to cover the
+// start-of-match lag, NOT the full match — while a game is genuinely in play
+// the IN_PLAY/PAUSED status keeps it live with no time limit, so stoppage,
+// extra time and penalties are all covered by status alone. 4h still spans an
+// entire knockout-to-shootout (~3h end to end, ~3.4h with extreme stoppage)
+// even in the pathological case where the status never updates, plus a tail of
+// "just after" so we catch the settled score and the flip to FINISHED.
+const LIVE_WINDOW_MS = 4 * 60 * 60 * 1000;
 
 function kickoffMs(m: NormalisedMatch): number {
   const t = Date.parse(m.utcDate);
