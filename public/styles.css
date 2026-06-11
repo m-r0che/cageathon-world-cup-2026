@@ -380,7 +380,15 @@ a.rt:hover, a.rt:focus-visible {
 .match-list .tla .short { display: none; }
 .match-list .score { font-family: "Fraunces", serif; font-size: 22px; font-variant-numeric: tabular-nums; }
 .match-list .score.scheduled { color: var(--muted); font-size: 13px; font-family: "Inter", sans-serif; text-transform: uppercase; letter-spacing: 0.14em; }
-.match-list .owner-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-left: 6px; }
+.match-list .owner-dot {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 4px; margin-left: 6px;
+  border-radius: 9px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.02em;
+  color: #0a0a0c;
+}
+.match-list .side.away .owner-dot { margin-left: 0; margin-right: 6px; }
 .match-list .stage { grid-column: 1 / -1; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.16em; }
 
 /* Draw animation --------------------------------------------------- */

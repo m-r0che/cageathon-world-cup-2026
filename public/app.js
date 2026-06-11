@@ -226,10 +226,14 @@ function renderMatches(state) {
   const renderRow = (m) => {
     const home = teams.get(m.homeCode);
     const away = teams.get(m.awayCode);
-    const ownerColor = (code) => {
+    // Owner chip: a small color-coded pill with the owning player's initials,
+    // so you can read who has each team straight from the Matches tab without
+    // opening the Draw. Empty string when the team is unowned (e.g. knockout TBD).
+    const ownerChip = (code) => {
       const owner = owners.get(code);
       const p = owner ? playersById.get(owner) : null;
-      return p ? p.color : "transparent";
+      if (!p) return "";
+      return `<span class="owner-dot" style="background:${p.color}" title="${p.name}">${initials(p.name)}</span>`;
     };
     const finished = m.status === "FINISHED";
     const score = finished
@@ -248,11 +252,11 @@ function renderMatches(state) {
         <span class="side home">
           <span class="flag">${home?.flag ?? "🏳️"}</span>
           ${nameMarkup(home, m.homeCode)}
-          <span class="owner-dot" style="background:${ownerColor(m.homeCode)}"></span>
+          ${ownerChip(m.homeCode)}
         </span>
         ${score}
         <span class="side away">
-          <span class="owner-dot" style="background:${ownerColor(m.awayCode)}"></span>
+          ${ownerChip(m.awayCode)}
           ${nameMarkup(away, m.awayCode)}
           <span class="flag">${away?.flag ?? "🏳️"}</span>
         </span>
