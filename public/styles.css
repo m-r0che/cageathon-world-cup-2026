@@ -380,6 +380,19 @@ a.rt:hover, a.rt:focus-visible {
 .match-list .tla .short { display: none; }
 .match-list .score { font-family: "Fraunces", serif; font-size: 22px; font-variant-numeric: tabular-nums; }
 .match-list .score.scheduled { color: var(--muted); font-size: 13px; font-family: "Inter", sans-serif; text-transform: uppercase; letter-spacing: 0.14em; }
+/* Live score — running tally + a pulsing LIVE pill so an in-play game is unmistakable. */
+.match-list .score.live { display: inline-flex; align-items: center; gap: 8px; color: var(--accent-2); }
+.match-list .live-pill {
+  font-family: "Inter", sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent-2);
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 6px; border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--accent-2) 45%, transparent);
+  background: color-mix(in oklab, var(--accent-2) 14%, transparent);
+}
+.match-list .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-2); animation: live-pulse 1.4s ease-in-out infinite; }
+@keyframes live-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.7); } }
+@media (prefers-reduced-motion: reduce) { .match-list .live-dot { animation: none; } }
 /* Owners row — full width below the score so player names never squeeze the
    team names. Home owner sits under the left side, away under the right. */
 .match-list .owners {

@@ -110,10 +110,16 @@ const handlers: Record<string, (req: Request, env: Env) => Promise<Response>> = 
     const standings = draw ? computeStandings(draw, matches, now) : null;
     const today = dailySpotlight(env.DRAW_SEED, now.toISOString());
 
-    // Surface next 5 and last 5 matches so the home view feels live.
+    // Surface live, next 5 and last 5 matches so the home view feels live.
+    // Bucket purely by status (not kickoff time): once a match kicks off its
+    // utcDate is in the past, so a time-based "upcoming" filter would drop it
+    // while it's IN_PLAY/PAUSED yet not FINISHED — making live games vanish.
     const sorted = matches.slice().sort((a, b) => a.utcDate.localeCompare(b.utcDate));
-    const nowIso = now.toISOString();
-    const upcoming = sorted.filter((m) => m.utcDate >= nowIso && m.status !== "FINISHED").slice(0, 5);
+    const isLive = (m: NormalisedMatch) => m.status === "IN_PLAY" || m.status === "PAUSED";
+    const live = sorted.filter(isLive);
+    const upcoming = sorted
+      .filter((m) => m.status === "SCHEDULED" || m.status === "TIMED")
+      .slice(0, 5);
     const recent = sorted.filter((m) => m.status === "FINISHED").slice(-5).reverse();
 
     return json({
@@ -123,6 +129,7 @@ const handlers: Record<string, (req: Request, env: Env) => Promise<Response>> = 
       draw,
       standings,
       today,             // daily spotlight (informational)
+      live,
       upcoming,
       recent,
       last_updated,

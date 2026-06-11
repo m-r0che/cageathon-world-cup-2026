@@ -239,8 +239,13 @@ function renderMatches(state) {
       return `<span class="owner"><span class="owner-dot" style="background:${p.color}"></span><span class="owner-name">${p.name}</span></span>`;
     };
     const finished = m.status === "FINISHED";
+    const live = m.status === "IN_PLAY" || m.status === "PAUSED";
+    // Live & finished matches show the running score; football-data populates
+    // fullTime goals during play, so a live game reads e.g. "1–0" with a LIVE pill.
     const score = finished
       ? `<span class="score">${m.homeGoals}–${m.awayGoals}</span>`
+      : live
+      ? `<span class="score live">${m.homeGoals ?? 0}–${m.awayGoals ?? 0}<span class="live-pill"><span class="live-dot"></span>LIVE</span></span>`
       : `<span class="score scheduled">${fmtKickoff(m.utcDate)}</span>`;
     const nameMarkup = (t, code) => {
       // Full name on wide screens, 3-letter code on narrow — keeps cards
@@ -269,6 +274,11 @@ function renderMatches(state) {
       </li>
     `;
   };
+
+  // Live section: only shown when something is actually in play.
+  const liveMatches = state.live ?? [];
+  $("#live").innerHTML = liveMatches.map(renderRow).join("");
+  $("#live-head").hidden = liveMatches.length === 0;
 
   $("#upcoming").innerHTML = state.upcoming?.length
     ? state.upcoming.map(renderRow).join("")
