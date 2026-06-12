@@ -101,7 +101,7 @@ function renderRace(state) {
     const g = document.createElement("span");
     g.className = "gridline leader";
     g.style.left = ((leaderPts / max) * 98) + "%";
-    g.innerHTML = `<span class="tick">${leaderPts}pt</span>`;
+    g.innerHTML = `<span class="tick">${leaderPts.toFixed(2)}pt</span>`;
     race.appendChild(g);
   }
 
@@ -126,7 +126,7 @@ function renderRace(state) {
         <span class="pulse"></span>
         <span class="avatar fallback">${initials}</span>
       </span>
-      <span class="pts">${total}</span>
+      <span class="pts">${total.toFixed(2)}</span>
     `;
     // Try to load the real avatar; fall through to initials on error.
     const av = lane.querySelector(".avatar");
@@ -189,8 +189,8 @@ function renderStandings(state) {
       <span class="medal">${MEDALS[i]}</span>
       <div class="avatar"><span class="initials">${initials}</span></div>
       <div class="name">${p.name}</div>
-      <div class="pts">${r.total}</div>
-      <div class="sub">${r.matchPoints} match · ${r.progressionPoints} prog · ${r.goalsScored} goals</div>
+      <div class="pts">${r.total.toFixed(2)}</div>
+      <div class="sub">${r.matchPoints.toFixed(2)} match · ${r.progressionPoints} prog · ${r.goalsScored} goals</div>
     `;
     attachAvatar(tile.querySelector(".avatar"), p);
     podium.appendChild(tile);
@@ -209,9 +209,9 @@ function renderStandings(state) {
       <div class="avatar"><span class="initials">${initials}</span></div>
       <div class="who">
         <strong>${p.name}</strong>
-        <span class="sub">${r.matchPoints} match · ${r.progressionPoints} prog · ${r.goalsScored} goals</span>
+        <span class="sub">${r.matchPoints.toFixed(2)} match · ${r.progressionPoints} prog · ${r.goalsScored} goals</span>
       </div>
-      <span class="pts">${r.total}</span>
+      <span class="pts">${r.total.toFixed(2)}</span>
     `;
     attachAvatar(li.querySelector(".avatar"), p);
     rest.appendChild(li);
@@ -316,7 +316,7 @@ function renderSquads(state) {
       <header>
         <span class="av">${initials}</span>
         <strong>${p.name}</strong>
-        <span class="total">${total}</span>
+        <span class="total">${total.toFixed(2)}</span>
       </header>
       <ul>
         ${picks.map((pk) => {

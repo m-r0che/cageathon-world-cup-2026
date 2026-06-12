@@ -8,7 +8,8 @@
 //   if cleanSheet (opponent scored 0): base += 1
 //   if beat a team from a HIGHER pot:  base += 3   (underdog bonus)
 //
-//   matchPts = round(base * teamMultiplier)
+//   matchPts = base * teamMultiplier        (kept fractional so the film multiplier
+//                                             effect is visible in the running totals)
 //
 // Where teamMultiplier is the team's permanent Cage-film multiplier set at draw time
 // (0.5× for a 0% RT film up to 1.5× for a 100% RT film). The inverse-pot coupling
@@ -147,14 +148,16 @@ export function computeStandings(
       }
 
       const stats = teamStats.get(team.code)!;
-      const multiplied = Math.round(base * stats.multiplier);
+      // Keep the multiplier's fractional result instead of rounding it away per match,
+      // so the film multiplier effect accumulates and stays visible in the totals.
+      const multiplied = base * stats.multiplier;
       if (stats.multiplier !== 1 && base > 0) {
-        notes.push(`×${stats.multiplier.toFixed(2)} = ${multiplied}`);
+        notes.push(`×${stats.multiplier.toFixed(2)} = ${multiplied.toFixed(2)}`);
       }
       stats.matchPoints += multiplied;
       stats.goalsScored += goalsFor;
       const dateLabel = m.utcDate.slice(5, 10);
-      stats.highlight.push(`${dateLabel} vs ${oppTeam.code} ${goalsFor}-${goalsAgainst}: ${multiplied}pt (${notes.join(", ")})`);
+      stats.highlight.push(`${dateLabel} vs ${oppTeam.code} ${goalsFor}-${goalsAgainst}: ${multiplied.toFixed(2)}pt (${notes.join(", ")})`);
     }
 
     if (m.stage === "FINAL" && m.winner && m.winner !== "DRAW") {
