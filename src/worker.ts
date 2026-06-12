@@ -14,7 +14,7 @@
 //   last_updated  — ISO string
 
 import { TEAMS } from "./lib/teams.ts";
-import { FILMS } from "./lib/films.ts";
+import { FILMS, multiplierFor } from "./lib/films.ts";
 import { runDraw, type Draw, type Player } from "./lib/draw.ts";
 import { fetchMatches, getUnmappedTlas, type NormalisedMatch } from "./lib/football-data.ts";
 import { computeStandings } from "./lib/scoring.ts";
@@ -62,7 +62,20 @@ async function getPlayers(env: Env): Promise<Player[]> {
 async function getDraw(env: Env): Promise<Draw | null> {
   const raw = await env.WC.get("draw");
   if (!raw) return null;
-  try { return JSON.parse(raw) as Draw; } catch { return null; }
+  try {
+    const draw = JSON.parse(raw) as Draw;
+    // Re-derive each pick's Cage multiplier from its rtScore (the source of truth,
+    // via the same `multiplierFor` formula runDraw used). This is a no-op for a
+    // healthy draw, but self-heals a stale/legacy draw whose persisted `multiplier`
+    // is missing or wrong — otherwise scoring silently falls back to 1× (see the
+    // `?? 1` in scoring.ts) and the Cage multipliers vanish from the standings.
+    // Fixing it here means both computeStandings and the API's `draw` payload
+    // (and so the Draw-tab pills) get correct values without a KV migration.
+    if (Array.isArray(draw.picks)) {
+      draw.picks = draw.picks.map((p) => ({ ...p, multiplier: multiplierFor(p.rtScore) }));
+    }
+    return draw;
+  } catch { return null; }
 }
 
 async function getMatches(env: Env): Promise<NormalisedMatch[]> {
