@@ -45,21 +45,39 @@ const TLA_OVERRIDES: Record<string, string> = {
   CGO: "COD",   // football-data sometimes uses CGO for DR Congo
   HTI: "HAI",   // Haiti (FIFA: HAI, IOC: HAI/HTI variants)
   URY: "URU",   // Uruguay — verified against live 2026 data (ISO vs FIFA)
-  CUR: "CUW",   // Curaçao — football-data flipped to IOC code mid-tournament (GER 7-1 was getting dropped)
+  CUR: "CUW",   // Curaçao — IOC variant (defensive; the real-world case has tla=null, see NAME_OVERRIDES)
   ANT: "CUW",   // Netherlands Antilles legacy code — Curaçao inherited it after 2010 dissolution
 };
+
+// Fallback when football-data sends `tla: null` (observed for Curaçao in the live 2026 feed —
+// caused GER 7-1 CUW to silently score zero on 06-14). Keys are lowercased, accent-stripped names.
+const NAME_OVERRIDES: Record<string, string> = {
+  "curacao": "CUW",
+};
+
+function normaliseName(name: string): string {
+  return name.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+}
 
 // Tracks any TLA we saw in real match data that didn't map to one of our 48 teams.
 // Read by the /api/diagnostics endpoint.
 const unmappedTlas = new Map<string, string>();   // TLA → most recent team name we saw
 
 function mapTla(tla: string | undefined | null, fallbackName?: string | null): string | null {
-  if (!tla) return null;
-  const up = tla.toUpperCase();
-  const mapped = TLA_OVERRIDES[up] ?? up;
-  if (TEAMS.some((t) => t.code === mapped)) return mapped;
-  // Record the mismatch so it's visible to the admin.
-  if (fallbackName) unmappedTlas.set(up, fallbackName);
+  if (tla) {
+    const up = tla.toUpperCase();
+    const mapped = TLA_OVERRIDES[up] ?? up;
+    if (TEAMS.some((t) => t.code === mapped)) return mapped;
+    if (fallbackName) unmappedTlas.set(up, fallbackName);
+    return null;
+  }
+  // No TLA at all — football-data occasionally omits it for late-confirmed teams.
+  // Fall back to the team name so the match still scores.
+  if (fallbackName) {
+    const byOverride = NAME_OVERRIDES[normaliseName(fallbackName)];
+    if (byOverride) return byOverride;
+    unmappedTlas.set(`(no tla: ${fallbackName})`, fallbackName);
+  }
   return null;
 }
 
