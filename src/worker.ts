@@ -8,10 +8,12 @@
 //   - scheduled()        → cron pull every 15 min
 //
 // All state lives in KV under these keys:
-//   draw          — Draw object (frozen once created)
-//   players       — Player[]   (roster — edit via /api/players)
-//   matches       — NormalisedMatch[]
-//   last_updated  — ISO string
+//   draw            — Draw object (frozen once created)
+//   players         — Player[]   (roster — edit via /api/players)
+//   matches         — NormalisedMatch[]
+//   last_updated    — ISO string
+//   alert_last_sig  — last diagnostics signature we Telegram-notified on
+//                     (empty string = clean; used to suppress repeat alerts)
 
 import { TEAMS } from "./lib/teams.ts";
 import { FILMS, multiplierFor } from "./lib/films.ts";
@@ -28,6 +30,11 @@ export interface Env {
   TOURNAMENT_START: string;
   FOOTBALL_DATA_API_KEY?: string;
   ADMIN_TOKEN?: string;
+  // Optional Telegram alerter — fires when /api/diagnostics flips between
+  // clean and dirty. Set both via `wrangler secret put TELEGRAM_BOT_TOKEN`
+  // and `wrangler secret put TELEGRAM_CHAT_ID`; leave unset to disable.
+  TELEGRAM_BOT_TOKEN?: string;
+  TELEGRAM_CHAT_ID?: string;
 }
 
 const DEFAULT_PLAYERS: Player[] = [
@@ -154,6 +161,95 @@ async function refreshMatches(env: Env): Promise<{ count: number; updated: strin
   return { count: matches.length, updated };
 }
 
+// The two signals the alerter cares about — pulled out so the cron and the
+// GET /api/diagnostics endpoint compute the same thing.
+interface ActionableDiagnostics {
+  unmappedTlas: { tla: string; name: string }[];
+  teamsNeverInMatchData: string[];
+}
+
+async function actionableDiagnostics(env: Env): Promise<ActionableDiagnostics> {
+  const [matches, draw] = await Promise.all([getMatches(env), getDraw(env)]);
+  const drawnCodes = new Set((draw?.picks ?? []).map((p) => p.team));
+  const teamsNeverInMatchData = [...drawnCodes]
+    .filter((code) => !matches.some((m) => m.homeCode === code || m.awayCode === code))
+    .sort();
+  const unmappedTlas = getUnmappedTlas()
+    .slice()
+    .sort((a, b) => a.tla.localeCompare(b.tla));
+  return { unmappedTlas, teamsNeverInMatchData };
+}
+
+// Empty string = "all clear". Any non-empty value is stable across ticks while the
+// same issues persist, so we only fire one alert per state change rather than every hour.
+function diagnosticsSignature(d: ActionableDiagnostics): string {
+  if (!d.unmappedTlas.length && !d.teamsNeverInMatchData.length) return "";
+  return JSON.stringify({
+    u: d.unmappedTlas.map((x) => `${x.tla}:${x.name}`),
+    t: d.teamsNeverInMatchData,
+  });
+}
+
+function formatAlert(d: ActionableDiagnostics, lastUpdated: string | null): string {
+  const lines = ["🚨 Cageathon diagnostics — action needed", ""];
+  if (d.unmappedTlas.length) {
+    lines.push("Unmapped TLAs (mapper saw a code we don't know):");
+    for (const { tla, name } of d.unmappedTlas) lines.push(`  • ${tla} → ${name}`);
+    lines.push("");
+  }
+  if (d.teamsNeverInMatchData.length) {
+    lines.push("Drawn teams missing from match data:");
+    for (const code of d.teamsNeverInMatchData) lines.push(`  • ${code}`);
+    lines.push("");
+  }
+  lines.push(`Last refresh: ${lastUpdated ?? "?"}`);
+  return lines.join("\n");
+}
+
+async function notifyTelegram(env: Env, text: string): Promise<boolean> {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return false;
+  try {
+    const res = await fetch(
+      `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          chat_id: env.TELEGRAM_CHAT_ID,
+          text,
+          disable_web_page_preview: true,
+        }),
+      },
+    );
+    if (!res.ok) {
+      console.error("[alert] telegram", res.status, await res.text().catch(() => ""));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[alert] telegram fetch failed:", err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+// Fire a Telegram message when the diagnostics signature changes — i.e. a new issue
+// appears (clean → dirty), an existing set of issues changes shape (dirty → different
+// dirty), or everything clears (dirty → clean). Stable state = no message. The signature
+// is only persisted on a successful send so a Telegram outage retries on the next tick.
+async function alertIfChanged(env: Env): Promise<void> {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return;
+  const diag = await actionableDiagnostics(env);
+  const sig = diagnosticsSignature(diag);
+  const prevSig = (await env.WC.get("alert_last_sig")) ?? "";
+  if (sig === prevSig) return;
+  const text = sig === ""
+    ? "✅ Cageathon diagnostics — all clear"
+    : formatAlert(diag, await env.WC.get("last_updated"));
+  if (await notifyTelegram(env, text)) {
+    await env.WC.put("alert_last_sig", sig);
+  }
+}
+
 function isAdmin(req: Request, env: Env): boolean {
   if (!env.ADMIN_TOKEN) {
     console.warn(
@@ -224,6 +320,9 @@ const handlers: Record<string, (req: Request, env: Env) => Promise<Response>> = 
   "POST /api/refresh": async (req, env) => {
     if (!isAdmin(req, env)) return unauthorised();
     const result = await refreshMatches(env);
+    // Run the same alert path the cron uses so a manual refresh is the simplest
+    // way to test the Telegram setup end-to-end.
+    await alertIfChanged(env);
     return json({ ok: true, ...result });
   },
 
@@ -242,19 +341,18 @@ const handlers: Record<string, (req: Request, env: Env) => Promise<Response>> = 
   // didn't map to one of our 48 teams. Empty = healthy.
   "GET /api/diagnostics": async (req, env) => {
     if (!isAdmin(req, env)) return unauthorised();
-    const matches = await getMatches(env);
-    const draw = await getDraw(env);
-    const drawnCodes = new Set((draw?.picks ?? []).map((p) => p.team));
-    const teamsNeverInMatchData = [...drawnCodes].filter(
-      (code) => !matches.some((m) => m.homeCode === code || m.awayCode === code),
-    );
+    const [matches, diag, lastUpdated] = await Promise.all([
+      getMatches(env),
+      actionableDiagnostics(env),
+      env.WC.get("last_updated"),
+    ]);
     // Matches with TBD teams are expected pre-knockout — most knockout slots fill in as
     // groups conclude. We report a count rather than the full list to keep the response tidy.
     const tbdMatches = matches.filter((m) => m.homeCode === null || m.awayCode === null);
     return json({
-      // Real problem signals
-      unmappedTlas: getUnmappedTlas(),                  // ← must be empty for healthy scoring
-      teamsNeverInMatchData,                            // ← drawn teams the API never references
+      // Real problem signals (same shape the Telegram alerter watches)
+      unmappedTlas: diag.unmappedTlas,                  // ← must be empty for healthy scoring
+      teamsNeverInMatchData: diag.teamsNeverInMatchData,// ← drawn teams the API never references
       // Informational
       totalMatches: matches.length,
       tbdMatchesCount: tbdMatches.length,
@@ -262,8 +360,21 @@ const handlers: Record<string, (req: Request, env: Env) => Promise<Response>> = 
         acc[m.stage] = (acc[m.stage] ?? 0) + 1;
         return acc;
       }, {}),
-      lastUpdated: (await env.WC.get("last_updated")) ?? null,
+      lastUpdated: lastUpdated ?? null,
     });
+  },
+
+  // One-shot send to confirm Telegram is wired up correctly. Bypasses the change
+  // detector so it always fires when the secrets are set.
+  "POST /api/test-alert": async (req, env) => {
+    if (!isAdmin(req, env)) return unauthorised();
+    if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
+      return json({ error: "TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set" }, { status: 400 });
+    }
+    const sent = await notifyTelegram(env, "✅ Cageathon — test alert from /api/test-alert");
+    return sent
+      ? json({ ok: true })
+      : json({ error: "telegram send failed — check wrangler tail logs" }, { status: 502 });
   },
 
   // Manual matches override — useful for local testing and as a break-glass if football-data is down.
@@ -314,6 +425,7 @@ export default {
           ]);
           if (!shouldPoll(matches, lastUpdated, new Date())) return;
           await refreshMatches(env);
+          await alertIfChanged(env);
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
           console.error("[cron] refreshMatches failed:", msg);
