@@ -45,6 +45,8 @@ const TLA_OVERRIDES: Record<string, string> = {
   CGO: "COD",   // football-data sometimes uses CGO for DR Congo
   HTI: "HAI",   // Haiti (FIFA: HAI, IOC: HAI/HTI variants)
   URY: "URU",   // Uruguay — verified against live 2026 data (ISO vs FIFA)
+  CUR: "CUW",   // Curaçao — football-data flipped to IOC code mid-tournament (GER 7-1 was getting dropped)
+  ANT: "CUW",   // Netherlands Antilles legacy code — Curaçao inherited it after 2010 dissolution
 };
 
 // Tracks any TLA we saw in real match data that didn't map to one of our 48 teams.
