@@ -201,7 +201,7 @@ a.rt:hover, a.rt:focus-visible {
 .race {
   position: relative;
   display: flex; flex-direction: column; gap: 10px;
-  padding: 18px 14px 36px;       /* extra bottom padding for the points axis */
+  padding: 18px 14px 46px;       /* extra bottom padding so the points-axis labels clear the edge */
   background: var(--bg-elev);
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -209,13 +209,13 @@ a.rt:hover, a.rt:focus-visible {
 }
 /* JS injects .gridline elements at meaningful point intervals (every 25pt or 50pt). */
 .race .gridline {
-  position: absolute; top: 14px; bottom: 28px;
+  position: absolute; top: 14px; bottom: 32px;
   width: 1px;
   background: rgba(255,255,255,0.06);
   pointer-events: none;
 }
 .race .gridline .tick {
-  position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%);
+  position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%);
   font-size: 10px; color: var(--muted);
   letter-spacing: 0.06em; font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -236,16 +236,18 @@ a.rt:hover, a.rt:focus-visible {
   position: absolute; top: 0; bottom: 0; left: 0;
   border-radius: 10px 0 0 10px;
   background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--lane-color) 60%, transparent));
-  width: var(--pct, 0%);
+  /* Cap matches the avatar/pts clamp so the trail ends with the avatar and never runs the
+     points pill off the right edge on narrow screens. */
+  width: min(var(--pct, 0%), calc(100% - 86px));
   transition: width 1.4s cubic-bezier(.22,.61,.36,1);
 }
 .lane .avatar-wrap {
   position: absolute; top: 50%;
   transform: translate(-50%, -50%);
   width: 44px; height: 44px;
-  /* Clamp so the avatar (44px wide, centred on left%) never clips the race container's
-     left edge. 26px = half-avatar (22) + 4px breathing room. */
-  left: max(26px, var(--pct, 0%));
+  /* Clamp both ends: 26px (half-avatar 22 + 4px) keeps it off the left edge; the upper
+     cap reserves room on the right for the points pill so neither runs off the container. */
+  left: clamp(26px, var(--pct, 0%), calc(100% - 86px));
   transition: left 1.4s cubic-bezier(.22,.61,.36,1);
   filter: drop-shadow(0 6px 12px rgba(0,0,0,0.45));
 }
@@ -276,8 +278,9 @@ a.rt:hover, a.rt:focus-visible {
 }
 .lane .pts {
   position: absolute;
-  /* Sit just to the right of the (clamped) avatar so they don't separate at score=0. */
-  left: calc(max(26px, var(--pct, 0%)) + 28px);
+  /* Sit just to the right of the (clamped) avatar so they don't separate at score=0,
+     and share the avatar's right-hand cap so the pill stays inside the container. */
+  left: calc(clamp(26px, var(--pct, 0%), calc(100% - 86px)) + 28px);
   top: 50%; transform: translateY(-50%);
   font-size: 13px; color: var(--text); font-weight: 600;
   background: rgba(0,0,0,0.6); padding: 2px 8px; border-radius: 999px;

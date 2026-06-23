@@ -82,8 +82,9 @@ function renderRace(state) {
   const rows = state.standings?.rows ?? [];
   const playersById = new Map(state.players.map((p) => [p.id, p]));
   const leaderPts = rows[0]?.total ?? 0;
-  // 10% headroom on the right so the leader avatar + pulse halo never clips the race container.
-  const max = Math.max(60, leaderPts * 1.1);
+  // Headroom on the right so the leader's avatar, points pill, and axis label all stay
+  // inside the race container instead of running off the edge once scores climb (60+).
+  const max = Math.max(60, leaderPts * 1.35);
 
   // Gridlines = point thresholds. Pick a stride so we get ~4-6 ticks below the leader.
   // Position uses the same (total/max) * 98 formula as the lanes so labels line up exactly.
@@ -100,7 +101,9 @@ function renderRace(state) {
   if (leaderPts > 0) {
     const g = document.createElement("span");
     g.className = "gridline leader";
-    g.style.left = ((leaderPts / max) * 98) + "%";
+    // Cap in pixels so the yellow leader label can't be clipped by the container's right edge,
+    // staying aligned with the avatar's matching clamp on narrow screens.
+    g.style.left = "min(" + ((leaderPts / max) * 98) + "%, calc(100% - 100px))";
     g.innerHTML = `<span class="tick">${leaderPts.toFixed(2)}pt</span>`;
     race.appendChild(g);
   }
