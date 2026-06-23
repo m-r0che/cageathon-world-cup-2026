@@ -201,7 +201,7 @@ a.rt:hover, a.rt:focus-visible {
 .race {
   position: relative;
   display: flex; flex-direction: column; gap: 10px;
-  padding: 18px 14px 36px;       /* extra bottom padding for the points axis */
+  padding: 18px 14px 46px;       /* extra bottom padding so the points-axis labels clear the edge */
   background: var(--bg-elev);
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -209,13 +209,13 @@ a.rt:hover, a.rt:focus-visible {
 }
 /* JS injects .gridline elements at meaningful point intervals (every 25pt or 50pt). */
 .race .gridline {
-  position: absolute; top: 14px; bottom: 28px;
+  position: absolute; top: 14px; bottom: 32px;
   width: 1px;
   background: rgba(255,255,255,0.06);
   pointer-events: none;
 }
 .race .gridline .tick {
-  position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%);
+  position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%);
   font-size: 10px; color: var(--muted);
   letter-spacing: 0.06em; font-variant-numeric: tabular-nums;
   white-space: nowrap;
