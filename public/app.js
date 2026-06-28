@@ -221,6 +221,109 @@ function renderStandings(state) {
   });
 }
 
+// Pull apart a scoring.ts highlight string into its display parts.
+// Format: "06-13 vs ENG 2-1: 9.60pt (win +3, upset vs pot 3 +3, 2 goals +2, ×1.20 = 9.60)"
+// Notes can be empty (e.g. a goalless loss → "0.00pt ()"), so allow an empty group.
+function parseHighlight(h) {
+  const m = h.match(/^(\S+) vs (\S+) (\d+-\d+): ([\d.]+)pt \((.*)\)$/);
+  if (!m) return null;
+  return { date: m[1], opp: m[2], score: m[3].replace("-", "–"), pts: m[4], notes: m[5] };
+}
+
+function renderBreakdown(state) {
+  const root = $("#breakdown");
+  root.innerHTML = "";
+  const rows = state.standings?.rows ?? [];
+  if (!state.draw || !rows.length) {
+    root.innerHTML = `<p class="lede">The draw hasn't been run yet — no scores to break down.</p>`;
+    return;
+  }
+  const teams = teamMap(state);
+  const playersById = new Map(state.players.map((p) => [p.id, p]));
+
+  // Standings order so the leader's breakdown is on top.
+  rows.forEach((r, i) => {
+    const p = playersById.get(r.playerId);
+    if (!p) return;
+    const card = document.createElement("section");
+    card.className = "bd-player";
+    card.style.setProperty("--lane-color", p.color);
+
+    // Biggest-earning teams first so the points sources read top-down.
+    const ownedTeams = r.teams.slice().sort(
+      (a, b) => (b.matchPoints + b.progressionPoints) - (a.matchPoints + a.progressionPoints),
+    );
+
+    const teamsHtml = ownedTeams.map((t) => {
+      const team = teams.get(t.code);
+      const teamTotal = t.matchPoints + t.progressionPoints;
+      const hasPoints = teamTotal > 0;
+      const mClass = t.multiplier >= 1.3 ? "boon" : t.multiplier <= 0.8 ? "curse" : "";
+
+      // Progression bonus (not multiplied) shown as its own line above the matches.
+      const progRow = t.progressionPoints > 0 ? `
+        <li class="bd-match bd-prog">
+          <span class="bd-m-date">🏆</span>
+          <span class="bd-m-main"><span class="bd-m-opp">Progression bonus</span>
+            <span class="bd-m-notes">for advancing through the knockouts</span></span>
+          <span class="bd-m-pts">+${t.progressionPoints}</span>
+        </li>` : "";
+
+      const matchRows = (t.highlight ?? []).map((h) => {
+        const ph = parseHighlight(h);
+        if (!ph) return `<li class="bd-match"><span class="bd-m-raw">${h}</span></li>`;
+        const zero = Number(ph.pts) === 0;
+        const notes = ph.notes || "no points scored";
+        return `
+          <li class="bd-match">
+            <span class="bd-m-date">${ph.date}</span>
+            <span class="bd-m-main">
+              <span class="bd-m-opp">vs ${ph.opp}<span class="bd-m-score">${ph.score}</span></span>
+              <span class="bd-m-notes">${notes}</span>
+            </span>
+            <span class="bd-m-pts${zero ? " bd-zero" : ""}">${ph.pts}</span>
+          </li>`;
+      }).join("");
+
+      const body = (progRow || matchRows)
+        ? `<ul class="bd-matches">${progRow}${matchRows}</ul>`
+        : `<p class="bd-empty">No points yet — this team hasn't finished a match.</p>`;
+
+      return `
+        <details class="bd-team ${mClass}"${hasPoints ? " open" : ""}>
+          <summary>
+            <span class="flag">${team?.flag ?? "🏳️"}</span>
+            <span class="bd-team-who">
+              <span class="bd-team-name">${team?.name ?? t.code}</span>
+              <span class="bd-team-film">${rtLink(t.film)} <span class="rt-pill">${t.rtScore}%</span> <span class="bd-mult">×${t.multiplier.toFixed(2)}</span></span>
+            </span>
+            <span class="bd-team-pts">
+              <span class="bd-team-total">${teamTotal.toFixed(2)}</span>
+              <span class="bd-team-sub">${t.matchPoints.toFixed(2)} match · ${t.progressionPoints} prog · ${t.goalsScored} ⚽</span>
+            </span>
+            <span class="bd-caret" aria-hidden="true">▸</span>
+          </summary>
+          ${body}
+        </details>`;
+    }).join("");
+
+    card.innerHTML = `
+      <header class="bd-player-head">
+        <span class="bd-rank">${i + 1}</span>
+        <span class="bd-av">${initials(p.name)}</span>
+        <span class="bd-player-name">${p.name}</span>
+        <span class="bd-player-tot">
+          <span class="bd-player-total">${r.total.toFixed(2)}</span>
+          <span class="bd-player-sub">${r.matchPoints.toFixed(2)} match · ${r.progressionPoints} prog · ${r.goalsScored} goals</span>
+        </span>
+      </header>
+      <div class="bd-teams">${teamsHtml}</div>
+    `;
+    attachAvatarTo(card.querySelector(".bd-av"), p);
+    root.appendChild(card);
+  });
+}
+
 function renderMatches(state) {
   const teams = teamMap(state);
   const owners = ownerLookup(state.draw);
@@ -355,6 +458,7 @@ function renderAll(s) {
   renderCageStrip(s);
   renderRace(s);
   renderStandings(s);
+  renderBreakdown(s);
   renderMatches(s);
   renderSquads(s);
   $("#updated").textContent = s.last_updated ? `Last update ${fmtDate(s.last_updated)}` : "Awaiting first sync";

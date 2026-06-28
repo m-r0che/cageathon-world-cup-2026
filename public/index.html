@@ -55,6 +55,7 @@
     </div>
     <nav class="tabs" id="tabs">
       <button class="tab active" data-tab="race">The Cup</button>
+      <button class="tab" data-tab="breakdown">Breakdown</button>
       <button class="tab" data-tab="matches">Matches</button>
       <button class="tab" data-tab="draw">The Draw</button>
       <button class="tab" data-tab="rules">Rules</button>
@@ -89,6 +90,15 @@
       <h2 class="section-h">Standings</h2>
       <div class="podium" id="podium"></div>
       <ol class="standings-rest" id="standings-rest"></ol>
+    </section>
+
+    <!-- SCORE BREAKDOWN -->
+    <section class="panel hidden" data-pane="breakdown">
+      <div class="bd-head">
+        <h2 class="section-h" style="margin:0">Score Breakdown</h2>
+        <p class="lede" style="margin:4px 0 0">Exactly where every point comes from — team by team, match by match. Tap a team to see each game.</p>
+      </div>
+      <div class="breakdown" id="breakdown"></div>
     </section>
 
     <!-- MATCHES -->
