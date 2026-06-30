@@ -133,7 +133,14 @@ export function computeStandings(
         (m.winner === "HOME_TEAM" && isHome) ||
         (m.winner === "AWAY_TEAM" && !isHome)
       ) {
-        base += 3; notes.push("win +3");
+        base += 3;
+        if (m.duration === "PENALTY_SHOOTOUT" && m.penalties) {
+          const myPens = isHome ? m.penalties.home : m.penalties.away;
+          const oppPens = isHome ? m.penalties.away : m.penalties.home;
+          notes.push(`win on pens ${myPens}-${oppPens} +3`);
+        } else {
+          notes.push("win +3");
+        }
         if (oppTeam.pot < team.pot) {
           base += 3;
           notes.push(`upset vs pot ${oppTeam.pot} +3`);

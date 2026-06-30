@@ -131,6 +131,18 @@ function normalise(m: RawMatch): NormalisedMatch {
     ? { home: p.home, away: p.away }
     : null;
 
+  // football-data's `score.winner` reflects the regulation/extra-time result, which is
+  // level for any match that goes to a shootout — so a penalty win arrives here as
+  // winner: null (or "DRAW"). Resolve the real winner from the shootout tally so the
+  // advancing team earns its +3 win bonus and any underdog bonus (e.g. a Pot 3 side
+  // knocking out a Pot 1 side on pens). AET goals still count toward goalsFor; the
+  // penalty tallies themselves never do.
+  let winner = m.score?.winner ?? null;
+  if (m.score?.duration === "PENALTY_SHOOTOUT" && penalties) {
+    if (penalties.home > penalties.away) winner = "HOME_TEAM";
+    else if (penalties.away > penalties.home) winner = "AWAY_TEAM";
+  }
+
   return {
     id: m.id,
     utcDate: m.utcDate,
@@ -141,7 +153,7 @@ function normalise(m: RawMatch): NormalisedMatch {
     awayCode: mapTla(m.awayTeam?.tla, m.awayTeam?.name),
     homeGoals,
     awayGoals,
-    winner: m.score?.winner ?? null,
+    winner,
     duration: m.score?.duration,
     penalties,
   };
