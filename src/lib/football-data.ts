@@ -117,19 +117,24 @@ export async function fetchMatches(
 }
 
 function normalise(m: RawMatch): NormalisedMatch {
-  // If extra time was played, its score is the *cumulative* goals through 120 min
-  // — prefer it as the canonical goal count. Penalty-shootout tallies are NOT added
-  // to goalsFor (they don't count toward the +1-per-goal mechanic).
-  const aet = m.score?.extraTime;
-  const ft = m.score?.fullTime;
-  const aetPresent = aet && (aet.home != null || aet.away != null);
-  const homeGoals = (aetPresent ? aet?.home : ft?.home) ?? null;
-  const awayGoals = (aetPresent ? aet?.away : ft?.away) ?? null;
-
   const p = m.score?.penalties;
   const penalties = p && p.home != null && p.away != null
     ? { home: p.home, away: p.away }
     : null;
+
+  // v4 score-node semantics, verified against the live 2026 feed (GER 1-1 PAR, won 4-3
+  // on pens → fullTime {home:4, away:5}, regularTime {1,1}, extraTime {0,0}, penalties {3,4}):
+  //   fullTime  = grand total INCLUDING any shootout goals
+  //   penalties = shootout goals only
+  //   extraTime = goals scored *within* the ET period only — NOT cumulative through 120 min
+  // The count that feeds goal-based scoring is the on-the-pitch result through 90/120 min,
+  // i.e. fullTime minus the shootout tally (== regularTime + extraTime). For non-shootout
+  // matches penalties is absent, so this is just fullTime. (The old code preferred extraTime
+  // as if it were cumulative, which scored every shootout as 0-0 — losing both teams' goals
+  // and handing both a bogus clean sheet.)
+  const ft = m.score?.fullTime;
+  const homeGoals = ft?.home != null ? ft.home - (penalties?.home ?? 0) : null;
+  const awayGoals = ft?.away != null ? ft.away - (penalties?.away ?? 0) : null;
 
   // Per the football-data v4 docs, score.winner should name the shootout winner
   // (HOME_TEAM/AWAY_TEAM) with duration PENALTY_SHOOTOUT. The live 2026 feed credited no
