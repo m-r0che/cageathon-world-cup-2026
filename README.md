@@ -135,7 +135,11 @@ Progression bonuses (awarded once each, NOT multiplied):
 | Win it all                          | +25 |
 
 Knockout matches: AET goals count, penalty-shootout tallies don't. The team
-that advances (per football-data's `score.winner`) gets the +3 win bonus.
+that advances gets the +3 win bonus (and the underdog bonus if it beat a
+higher pot). football-data's `score.winner` is documented to name the
+shootout winner, but the live feed has been seen to omit it, so the advancing
+side is resolved defensively from the penalty tally (`score.penalties`) — see
+`normalise()` in football-data.ts.
 
 Tiebreakers: total points → total goals scored.
 
