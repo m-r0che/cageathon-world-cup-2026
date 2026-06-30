@@ -383,6 +383,8 @@ a.rt:hover, a.rt:focus-visible {
 .match-list .tla .short { display: none; }
 .match-list .score { font-family: "Fraunces", serif; font-size: 22px; font-variant-numeric: tabular-nums; }
 .match-list .score.scheduled { color: var(--muted); font-size: 13px; font-family: "Inter", sans-serif; text-transform: uppercase; letter-spacing: 0.14em; }
+/* Penalty-shootout tally, shown in brackets after the score à la Google. */
+.match-list .score .pens { font-family: "Inter", sans-serif; font-size: 13px; color: var(--muted); margin-left: 5px; vertical-align: middle; }
 /* Live score — running tally + a pulsing LIVE pill so an in-play game is unmistakable. */
 .match-list .score.live { display: inline-flex; align-items: center; gap: 8px; color: var(--accent-2); }
 .match-list .live-pill {
