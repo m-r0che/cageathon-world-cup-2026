@@ -131,12 +131,13 @@ function normalise(m: RawMatch): NormalisedMatch {
     ? { home: p.home, away: p.away }
     : null;
 
-  // football-data's `score.winner` reflects the regulation/extra-time result, which is
-  // level for any match that goes to a shootout — so a penalty win arrives here as
-  // winner: null (or "DRAW"). Resolve the real winner from the shootout tally so the
-  // advancing team earns its +3 win bonus and any underdog bonus (e.g. a Pot 3 side
-  // knocking out a Pot 1 side on pens). AET goals still count toward goalsFor; the
-  // penalty tallies themselves never do.
+  // Per the football-data v4 docs, score.winner should name the shootout winner
+  // (HOME_TEAM/AWAY_TEAM) with duration PENALTY_SHOOTOUT. The live 2026 feed credited no
+  // win for a shootout (PAR knocking out GER in the R32 showed only a clean sheet), so we
+  // resolve the winner defensively from the penalty tally whenever duration is
+  // PENALTY_SHOOTOUT. This AGREES with score.winner when the feed populates it
+  // (penalties.home > penalties.away ⟺ HOME_TEAM) and fills the gap when it doesn't, so
+  // the advancing side still earns its +3 win and any underdog bonus.
   let winner = m.score?.winner ?? null;
   if (m.score?.duration === "PENALTY_SHOOTOUT" && penalties) {
     if (penalties.home > penalties.away) winner = "HOME_TEAM";
