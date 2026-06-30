@@ -346,10 +346,16 @@ function renderMatches(state) {
     };
     const finished = m.status === "FINISHED";
     const live = m.status === "IN_PLAY" || m.status === "PAUSED";
+    // Shootout result shown in brackets after the score, the way Google does it
+    // (e.g. "1–1 (4–3)"). Only emitted when the match actually went to penalties.
+    const pens =
+      m.duration === "PENALTY_SHOOTOUT" && m.penalties
+        ? `<span class="pens">(${m.penalties.home}–${m.penalties.away})</span>`
+        : "";
     // Live & finished matches show the running score; football-data populates
     // fullTime goals during play, so a live game reads e.g. "1–0" with a LIVE pill.
     const score = finished
-      ? `<span class="score">${m.homeGoals}–${m.awayGoals}</span>`
+      ? `<span class="score">${m.homeGoals}–${m.awayGoals}${pens}</span>`
       : live
       ? `<span class="score live">${m.homeGoals ?? 0}–${m.awayGoals ?? 0}<span class="live-pill"><span class="live-dot"></span>LIVE</span></span>`
       : `<span class="score scheduled">${fmtKickoff(m.utcDate)}</span>`;
