@@ -102,14 +102,20 @@ export function computeStandings(
   let winnerCode: string | null = null;
 
   for (const m of sorted) {
-    if (!m.homeCode || !m.awayCode) continue;
-
+    // Progression tracking needs only the stage and one side's code, so it runs before the
+    // both-teams guard below. A team that has advanced into a knockout fixture is recorded
+    // as the home/away side as soon as it wins its prior tie — even while the opposing slot
+    // is still TBD (null) because the other feeder match hasn't finished. Crediting here
+    // means the "reached this round" bonus shows immediately on advancing (e.g. PAR getting
+    // its Round-of-16 +4 after the R32 win), not only once the opponent is confirmed.
     const sIdx = stageIndex(m.stage);
     if (sIdx >= 0) {
-      furthest.set(m.homeCode, Math.max(furthest.get(m.homeCode) ?? 0, sIdx));
-      furthest.set(m.awayCode, Math.max(furthest.get(m.awayCode) ?? 0, sIdx));
+      if (m.homeCode) furthest.set(m.homeCode, Math.max(furthest.get(m.homeCode) ?? 0, sIdx));
+      if (m.awayCode) furthest.set(m.awayCode, Math.max(furthest.get(m.awayCode) ?? 0, sIdx));
     }
 
+    // Per-match scoring needs both teams resolved and the match finished.
+    if (!m.homeCode || !m.awayCode) continue;
     if (m.status !== "FINISHED") continue;
     if (m.homeGoals == null || m.awayGoals == null) continue;
 
