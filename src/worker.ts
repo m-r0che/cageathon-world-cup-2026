@@ -18,7 +18,7 @@
 import { TEAMS } from "./lib/teams.ts";
 import { FILMS, multiplierFor } from "./lib/films.ts";
 import { runDraw, type Draw, type Player } from "./lib/draw.ts";
-import { fetchMatches, getUnmappedTlas, type NormalisedMatch } from "./lib/football-data.ts";
+import { fetchMatches, mergeMatches, getUnmappedTlas, type NormalisedMatch } from "./lib/football-data.ts";
 import { computeStandings } from "./lib/scoring.ts";
 import { dailySpotlight } from "./lib/cage.ts";
 
@@ -154,7 +154,11 @@ async function refreshMatches(env: Env): Promise<{ count: number; updated: strin
       "for production run `wrangler secret put FOOTBALL_DATA_API_KEY`.",
     );
   }
-  const matches = await fetchMatches(env.FOOTBALL_DATA_API_KEY, env.COMPETITION_ID);
+  const fetched = await fetchMatches(env.FOOTBALL_DATA_API_KEY, env.COMPETITION_ID);
+  // Merge over the cached snapshot rather than clobbering it, so a flaky/partial feed can't
+  // drop or un-finish a result we've already captured (see mergeMatches in football-data.ts).
+  const existing = await getMatches(env);
+  const matches = mergeMatches(existing, fetched);
   const updated = new Date().toISOString();
   await env.WC.put("matches", JSON.stringify(matches));
   await env.WC.put("last_updated", updated);

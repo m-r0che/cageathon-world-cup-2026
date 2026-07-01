@@ -116,6 +116,57 @@ export async function fetchMatches(
   return json.matches.map(normalise);
 }
 
+// A match we've captured as genuinely played: FINISHED with a real scoreline.
+// This is the information we must never lose to a flaky feed.
+function isSettled(m: NormalisedMatch): boolean {
+  return m.status === "FINISHED" && m.homeGoals != null && m.awayGoals != null;
+}
+
+// Merge a freshly-fetched match list over the cached one WITHOUT losing information.
+//
+// football-data's feed is intermittently flaky: it 500s ("This is my fault..."), and it
+// serves the occasional transient partial snapshot. On 2026-07-01 one such snapshot briefly
+// dropped the finished CIV 1-2 NOR Round-of-32 result *and* reverted the Round-of-16 slots to
+// TBD. The old code cached that snapshot verbatim, so the standings silently lost Norway's win
+// (and its +4 R16 progression, and France's) until the next poll — up to ~3h later, per the
+// baseline-refresh gap in shouldPoll().
+//
+// This keeps the cache monotonic — information only ever improves:
+//   • A settled (FINISHED + scored) result is never dropped, even if the latest feed omits the
+//     fixture entirely, and is never overwritten by a non-settled copy (un-finished / null score).
+//   • A populated knockout slot is never blanked back to TBD by a transient null tla.
+//   • Genuine updates still flow through: live scores, score corrections on already-finished
+//     matches, and newly drawn fixtures all come straight from the latest fetch.
+export function mergeMatches(
+  existing: NormalisedMatch[],
+  fetched: NormalisedMatch[],
+): NormalisedMatch[] {
+  const existingById = new Map(existing.map((m) => [m.id, m]));
+
+  const out = fetched.map((next) => {
+    const prev = existingById.get(next.id);
+    if (!prev) return next;
+    // Regression guard: keep a settled result if the incoming copy isn't itself settled.
+    if (isSettled(prev) && !isSettled(next)) return prev;
+    // Otherwise take the newer copy, but backfill team codes the feed may have blanked to TBD.
+    return {
+      ...next,
+      homeCode: next.homeCode ?? prev.homeCode,
+      awayCode: next.awayCode ?? prev.awayCode,
+    };
+  });
+
+  // Re-add settled results the latest feed dropped entirely, so a captured result can never
+  // vanish from the standings. Non-settled fixtures absent from the feed are left out — they're
+  // just placeholders/upcoming the feed can re-supply, so we don't risk keeping stale phantoms.
+  const fetchedIds = new Set(fetched.map((m) => m.id));
+  for (const prev of existing) {
+    if (!fetchedIds.has(prev.id) && isSettled(prev)) out.push(prev);
+  }
+
+  return out;
+}
+
 function normalise(m: RawMatch): NormalisedMatch {
   const p = m.score?.penalties;
   const penalties = p && p.home != null && p.away != null
