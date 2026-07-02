@@ -76,6 +76,21 @@ function stageIndex(s: MatchStage): number {
   return STAGE_ORDER.indexOf(s);
 }
 
+// The stage a team reaches by WINNING a knockout tie at stage `s`. Winning a Round-of-32
+// tie means you've reached the Round of 16, and so on. Returns -1 where a win doesn't
+// advance the team: GROUP_STAGE progression is decided by the group table (not a single
+// result), the FINAL leads only to the trophy (handled separately), and the 3rd-place
+// playoff leads nowhere further.
+function nextKnockoutStageIndex(s: MatchStage): number {
+  switch (s) {
+    case "LAST_32":          return STAGE_ORDER.indexOf("LAST_16");
+    case "LAST_16":          return STAGE_ORDER.indexOf("QUARTER_FINALS");
+    case "QUARTER_FINALS":   return STAGE_ORDER.indexOf("SEMI_FINALS");
+    case "SEMI_FINALS":      return STAGE_ORDER.indexOf("FINAL");
+    default:                 return -1;
+  }
+}
+
 export function computeStandings(
   draw: Draw,
   matches: NormalisedMatch[],
@@ -112,6 +127,21 @@ export function computeStandings(
     if (sIdx >= 0) {
       if (m.homeCode) furthest.set(m.homeCode, Math.max(furthest.get(m.homeCode) ?? 0, sIdx));
       if (m.awayCode) furthest.set(m.awayCode, Math.max(furthest.get(m.awayCode) ?? 0, sIdx));
+
+      // A finished knockout tie *proves* its winner has advanced to the next round, so credit
+      // that round's bonus from the result itself — don't wait for football-data to place the
+      // winner into the next fixture. The feed lags: for hours (sometimes days) after a tie is
+      // decided, the next-round slot stays TBD and doesn't yet name the advancing team, so the
+      // block above alone would leave them stuck one round short (e.g. USA/BEL winning their
+      // R32 ties on the night but showing only the +2 Round-of-32 bonus, not the +4 for the
+      // Round of 16 they'd reached). Deriving it from the winner closes that gap immediately.
+      if (m.status === "FINISHED" && (m.winner === "HOME_TEAM" || m.winner === "AWAY_TEAM")) {
+        const nextIdx = nextKnockoutStageIndex(m.stage);
+        if (nextIdx >= 0) {
+          const winCode = m.winner === "HOME_TEAM" ? m.homeCode : m.awayCode;
+          if (winCode) furthest.set(winCode, Math.max(furthest.get(winCode) ?? 0, nextIdx));
+        }
+      }
     }
 
     // Per-match scoring needs both teams resolved and the match finished.
