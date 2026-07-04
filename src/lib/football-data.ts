@@ -97,6 +97,7 @@ interface RawMatch {
     winner?: "HOME_TEAM" | "AWAY_TEAM" | "DRAW" | null;
     duration?: "REGULAR" | "EXTRA_TIME" | "PENALTY_SHOOTOUT";
     fullTime?: { home?: number | null; away?: number | null };
+    regularTime?: { home?: number | null; away?: number | null };
     extraTime?: { home?: number | null; away?: number | null };
     penalties?: { home?: number | null; away?: number | null };
   };
@@ -117,34 +118,56 @@ export async function fetchMatches(
 }
 
 function normalise(m: RawMatch): NormalisedMatch {
-  const p = m.score?.penalties;
-  const penalties = p && p.home != null && p.away != null
-    ? { home: p.home, away: p.away }
-    : null;
-
   // v4 score-node semantics, verified against the live 2026 feed (GER 1-1 PAR, won 4-3
   // on pens → fullTime {home:4, away:5}, regularTime {1,1}, extraTime {0,0}, penalties {3,4}):
-  //   fullTime  = grand total INCLUDING any shootout goals
-  //   penalties = shootout goals only
-  //   extraTime = goals scored *within* the ET period only — NOT cumulative through 120 min
-  // The count that feeds goal-based scoring is the on-the-pitch result through 90/120 min,
-  // i.e. fullTime minus the shootout tally (== regularTime + extraTime). For non-shootout
-  // matches penalties is absent, so this is just fullTime. (The old code preferred extraTime
-  // as if it were cumulative, which scored every shootout as 0-0 — losing both teams' goals
-  // and handing both a bogus clean sheet.)
+  //   fullTime    = grand total INCLUDING any shootout goals
+  //   regularTime = goals in the 90                 } their sum is the on-the-pitch score
+  //   extraTime   = goals within the ET period only } through 90/120 min (a draw for any shootout)
+  //   penalties   = shootout goals only
+  // The count that feeds goal-based scoring is the on-the-pitch result (regularTime + extraTime),
+  // and the shootout tally is what's left over: fullTime − (regularTime + extraTime). We derive
+  // the tally that way rather than trusting score.penalties directly, because the live 2026 feed
+  // has shipped a CORRUPT penalties node: AUS 1-1 EGY (EGY won 4-2 on pens) arrived as
+  // penalties {home:4, away:4} with fullTime {home:3, away:5}. The old "fullTime − penalties"
+  // path then gave AUS a nonsensical -1 on-pitch score and, because the bogus 4-4 tally is level,
+  // credited NO winner (so EGY lost its +3 win and its progression). fullTime − (regularTime +
+  // extraTime) reconstructs the real 4-2 tally from the self-consistent nodes, and agrees with a
+  // healthy penalties node when the feed provides one (GER-PAR, NED-MAR verified).
   const ft = m.score?.fullTime;
-  const homeGoals = ft?.home != null ? ft.home - (penalties?.home ?? 0) : null;
-  const awayGoals = ft?.away != null ? ft.away - (penalties?.away ?? 0) : null;
+  const rt = m.score?.regularTime;
+  const et = m.score?.extraTime;
+  const isShootout = m.score?.duration === "PENALTY_SHOOTOUT";
+
+  const rawP = m.score?.penalties;
+  const rawPenalties = rawP && rawP.home != null && rawP.away != null
+    ? { home: rawP.home, away: rawP.away }
+    : null;
+
+  // On-pitch score through 90/120 min. For a shootout, reconstruct it from regularTime +
+  // extraTime; for everything else fullTime already IS the on-pitch score (penalties absent).
+  const onPitchHome = isShootout && rt?.home != null ? rt.home + (et?.home ?? 0) : ft?.home ?? null;
+  const onPitchAway = isShootout && rt?.away != null ? rt.away + (et?.away ?? 0) : ft?.away ?? null;
+
+  let penalties = rawPenalties;
+  if (isShootout && ft?.home != null && ft?.away != null && onPitchHome != null && onPitchAway != null) {
+    // Prefer the derived tally; fall back to the raw node only if regularTime was missing
+    // (onPitch would then equal fullTime, making the derived tally 0-0).
+    const derived = { home: ft.home - onPitchHome, away: ft.away - onPitchAway };
+    if (derived.home !== 0 || derived.away !== 0) penalties = derived;
+  }
+
+  const homeGoals = onPitchHome;
+  const awayGoals = onPitchAway;
 
   // Per the football-data v4 docs, score.winner should name the shootout winner
-  // (HOME_TEAM/AWAY_TEAM) with duration PENALTY_SHOOTOUT. The live 2026 feed credited no
-  // win for a shootout (PAR knocking out GER in the R32 showed only a clean sheet), so we
-  // resolve the winner defensively from the penalty tally whenever duration is
-  // PENALTY_SHOOTOUT. This AGREES with score.winner when the feed populates it
-  // (penalties.home > penalties.away ⟺ HOME_TEAM) and fills the gap when it doesn't, so
-  // the advancing side still earns its +3 win and any underdog bonus.
+  // (HOME_TEAM/AWAY_TEAM) with duration PENALTY_SHOOTOUT. The live 2026 feed has both omitted
+  // the winner (PAR knocking out GER showed only a clean sheet) and corrupted the tally
+  // (AUS/EGY above), so we resolve the winner defensively from the reconstructed penalty tally
+  // whenever duration is PENALTY_SHOOTOUT. This AGREES with score.winner when the feed
+  // populates it and fills the gap when it doesn't, so the advancing side still earns its +3
+  // win and any underdog bonus.
   let winner = m.score?.winner ?? null;
-  if (m.score?.duration === "PENALTY_SHOOTOUT" && penalties) {
+  if (isShootout && penalties) {
     if (penalties.home > penalties.away) winner = "HOME_TEAM";
     else if (penalties.away > penalties.home) winner = "AWAY_TEAM";
   }
