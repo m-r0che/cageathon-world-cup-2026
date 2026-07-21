@@ -878,7 +878,7 @@ const renderers = {
             h("p", { className: "top-earner-label" }, "Biggest single bite"),
             h("p", { className: "top-team" }, s.sample.label),
             h("p", { className: "top-equation" }, s.sample.pts),
-            h("p", { className: "note" }, s.sample.film),
+            h("p", { className: "note" }, `Cage film · ${s.sample.film}`),
           )
         : null,
     );
@@ -1138,6 +1138,10 @@ export function mountCeremony(root, deck) {
   function paint() {
     const slide = slides[state.index];
     if (!slide) return;
+
+    // Outro has a real link. Full-screen tap zones would eat the tap on mobile.
+    zones.classList.toggle("tap-zones-off", slide.kind === "outro");
+
     const node = renderSlide(slide);
     node.classList.add("enter");
     stage.replaceChildren(node);
