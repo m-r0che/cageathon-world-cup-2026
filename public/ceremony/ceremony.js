@@ -455,7 +455,7 @@ function championSegment(ctx) {
   const margin = second ? champ.standing.total - second.standing.total : 0;
   return [
     {
-      ...base("champion", "champion", champ.player.color, 6500),
+      ...base("champion", "champion", champ.player.color, 9000),
       kind: "champion",
       player: champ.player,
       total: champ.standing.total,
@@ -476,7 +476,7 @@ function outroSegment(ctx) {
   const total = champ ? fmtPtsFull(champ.standing.total) : "";
   return [
     {
-      ...base("outro", "closing", "#ffcb5c", 8000),
+      ...base("outro", "closing", "#ffcb5c", 11000),
       kind: "outro",
       message: `${name} won Cageathon 2026.`,
       shareText: champ
