@@ -24,6 +24,8 @@ html, body {
   font-family: var(--ui);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
+  /* Kill iOS double-tap zoom so rapid slide taps advance instead of zooming. */
+  touch-action: manipulation;
 }
 
 #root {
@@ -72,6 +74,7 @@ html, body {
   cursor: pointer;
   position: relative;
   overflow: hidden;
+  touch-action: manipulation;
 }
 
 .pip.done { background: rgba(244, 243, 238, 0.45); }
@@ -470,6 +473,8 @@ html, body {
   text-align: left;
 }
 .back-link {
+  position: relative;
+  z-index: 6;
   display: inline-block;
   margin-top: 28px;
   color: #07070a;
@@ -523,15 +528,11 @@ html, body {
   background: transparent;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 .zone-prev { grid-column: 1; }
 .zone-next { grid-column: 2; }
 .tap-zones.tap-zones-off .zone { pointer-events: none; }
-
-.back-link {
-  position: relative;
-  z-index: 6;
-}
 
 @media (min-width: 768px) {
   .slide {
