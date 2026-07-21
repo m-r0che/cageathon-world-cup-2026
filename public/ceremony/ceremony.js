@@ -4,7 +4,7 @@
 export const HERO_IMAGE = "/ceremony/hero.jpg";
 export const OG_IMAGE = "/ceremony/og.jpg";
 
-const DEFAULT_DWELL = 5200;
+const DEFAULT_DWELL = 7500;
 const COVER_DWELL = 0; // tap to advance
 
 export function assertNever(x) {
