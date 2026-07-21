@@ -273,9 +273,19 @@ function filmReelSegment(ctx) {
 
 function epithetFor(rp) {
   const top = rp.teamLines[0];
+  const eliteFilms = rp.teamLines.filter((tl) => tl.film.rtScore >= 95);
+  const cursedCarry = rp.teamLines.find(
+    (tl) => tl.film.multiplier <= 0.8 && tl.progressionPoints >= 15,
+  );
   if (rp.rank === 1) return "Took the Cup. Kept the receipts.";
   if (rp.rank === 2) return "Silver. Loud footsteps.";
   if (rp.rank === 3) return "Podium. No footnotes.";
+  if (eliteFilms.length >= 2) {
+    return `Owned the ${eliteFilms[0].film.rtScore}% club. The scoreboard shrugged.`;
+  }
+  if (cursedCarry) {
+    return `${cursedCarry.team.name} on ${cursedCarry.film.title}. Bad reviews, deep run.`;
+  }
   if (rp.rank === 5) return "Somebody had to finish the story.";
   if (top && top.film.rtScore <= 30) {
     return `${top.team.name} on ${top.film.title}. Bold.`;
@@ -503,6 +513,67 @@ function chaseSegment(ctx) {
   ];
 }
 
+/** Hook line for a lower-table player — critic films, cursed deep run, or top earner. */
+function floorHook(rp) {
+  const elite = rp.teamLines
+    .filter((tl) => tl.film.rtScore >= 95)
+    .sort((a, b) => b.film.rtScore - a.film.rtScore);
+  if (elite.length >= 2) {
+    const titles = elite.map((e) => e.film.title).join(" + ");
+    return {
+      badge: "Critic bait",
+      line: `Drew ${titles} (${elite[0].film.rtScore}% RT, ×${Number(elite[0].film.multiplier).toFixed(2)}). The teams whispered.`,
+    };
+  }
+  const cursed = rp.teamLines.find(
+    (tl) => tl.film.multiplier <= 0.8 && tl.progressionPoints >= 15,
+  );
+  if (cursed) {
+    return {
+      badge: "Bad film, deep run",
+      line: `${cursed.team.flag} ${cursed.team.name} on ${cursed.film.title} (×${Number(cursed.film.multiplier).toFixed(2)}) still banked +${cursed.progressionPoints} progression.`,
+    };
+  }
+  const top = topEarnerPayload(rp.teamLines[0] ?? null);
+  if (top) {
+    return {
+      badge: "Top earner",
+      line: `${top.team.flag} ${top.team.name} · ${top.film.title} · ${top.equation}`,
+    };
+  }
+  return { badge: "Also ran", line: "Showed up. Left receipts." };
+}
+
+/** 4th vs 5th — Tom/Ed photo finish and their Cageathon hooks. */
+function floorSegment(ctx) {
+  const a = ctx.ranked[3];
+  const b = ctx.ranked[4];
+  if (!a || !b) return [];
+  const gap = Math.abs(a.standing.total - b.standing.total);
+  return [
+    {
+      ...base("floor", "awards", a.player.color),
+      kind: "floor",
+      eyebrow: "Photo finish",
+      headline: `${a.player.name} · ${b.player.name}`,
+      gapLabel: `${fmtPtsFull(gap)} pts apart`,
+      blurb: gap < 1
+        ? "Fourth and fifth separated by less than a clean sheet."
+        : "The basement had a subplot.",
+      rows: [a, b].map((rp) => {
+        const hook = floorHook(rp);
+        return {
+          rank: rp.rank,
+          player: rp.player,
+          totalLabel: fmtPtsFull(rp.standing.total),
+          badge: hook.badge,
+          line: hook.line,
+        };
+      }),
+    },
+  ];
+}
+
 function superlativesSegment(ctx) {
   const slides = [];
   const champId = ctx.ranked[0]?.player.id;
@@ -620,6 +691,7 @@ export function buildCeremonyDeck(snap) {
     ...standingsSegment(ctx),
     ...underdogSegment(ctx),
     ...chaseSegment(ctx),
+    ...floorSegment(ctx),
     ...carrySegment(ctx),
     ...superlativesSegment(ctx),
     ...championSegment(ctx),
@@ -839,6 +911,37 @@ const renderers = {
               { className: "note" },
               `${r.matchLabel} match · +${r.progLabel} progression`,
             ),
+          ),
+        ),
+      ),
+    );
+  },
+
+  floor(s) {
+    return h(
+      "article",
+      { className: "slide slide-floor", style: { "--accent": s.accent } },
+      h("p", { className: "eyebrow" }, s.eyebrow),
+      h("h2", { className: "headline" }, s.headline),
+      h("p", { className: "award-value" }, s.gapLabel),
+      h("p", { className: "caption" }, s.blurb),
+      h(
+        "ul",
+        { className: "chase-list" },
+        ...s.rows.map((r) =>
+          h(
+            "li",
+            {},
+            h(
+              "div",
+              { className: "chase-head" },
+              h("span", { className: "ft-rank" }, `#${r.rank}`),
+              avatarEl(r.player, "av av-sm"),
+              h("span", { className: "ft-name" }, r.player.name),
+              h("span", { className: "ft-pts" }, r.totalLabel),
+            ),
+            h("p", { className: "top-earner-label" }, r.badge),
+            h("p", { className: "chase-line" }, r.line),
           ),
         ),
       ),

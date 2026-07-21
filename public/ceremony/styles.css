@@ -365,7 +365,8 @@ html, body {
 }
 
 .slide-underdog,
-.slide-chase { justify-content: center; }
+.slide-chase,
+.slide-floor { justify-content: center; }
 .underdog-hero {
   display: flex;
   flex-direction: column;

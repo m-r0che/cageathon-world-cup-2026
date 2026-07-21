@@ -31,6 +31,7 @@ assert(kinds.filter((k) => k === "playerCard").length === 5, "five playerCards")
 assert(kinds.includes("standings"), "has standings");
 assert(kinds.includes("underdog"), "has underdog");
 assert(kinds.includes("chase"), "has chase");
+assert(kinds.includes("floor"), "has floor");
 assert(kinds.includes("carry"), "has carry");
 assert(kinds.some((k) => k === "superlative"), "has superlative");
 assert(kinds.includes("champion"), "has champion");
@@ -50,6 +51,13 @@ const chase = deck.slides.find((s) => s.kind === "chase");
 assert(chase?.rows?.length === 2, `chase has 2 rows (got ${chase?.rows?.length})`);
 assert(chase?.rows?.[0]?.player?.name === "Matt", "chase lead is Matt");
 assert(chase?.rows?.[1]?.player?.name === "Jack", "chase second is Jack");
+
+const floor = deck.slides.find((s) => s.kind === "floor");
+assert(floor?.rows?.length === 2, `floor has 2 rows (got ${floor?.rows?.length})`);
+assert(floor?.rows?.[0]?.player?.name === "Tom", `floor #4 is Tom (got ${floor?.rows?.[0]?.player?.name})`);
+assert(floor?.rows?.[1]?.player?.name === "Ed", `floor #5 is Ed (got ${floor?.rows?.[1]?.player?.name})`);
+assert(String(floor?.rows?.[0]?.badge || "").length > 0, "Tom floor hook has badge");
+assert(String(floor?.rows?.[1]?.badge || "").length > 0, "Ed floor hook has badge");
 
 const playerCards = deck.slides.filter((s) => s.kind === "playerCard");
 assert(
