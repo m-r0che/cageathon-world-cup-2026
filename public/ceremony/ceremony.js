@@ -274,6 +274,8 @@ function filmReelSegment(ctx) {
 function epithetFor(rp) {
   const top = rp.teamLines[0];
   if (rp.rank === 1) return "Took the Cup. Kept the receipts.";
+  if (rp.rank === 2) return "Silver. Loud footsteps.";
+  if (rp.rank === 3) return "Podium. No footnotes.";
   if (rp.rank === 5) return "Somebody had to finish the story.";
   if (top && top.film.rtScore <= 30) {
     return `${top.team.name} on ${top.film.title}. Bold.`;
@@ -281,6 +283,24 @@ function epithetFor(rp) {
   if (rp.standing.progressionPoints >= 50) return "Deep run energy.";
   if (rp.standing.goalsScored >= 70) return "Goals for days.";
   return `Top earner: ${top ? top.team.name : "the void"}.`;
+}
+
+/** Top-earner payload with film multiplier math for the player card. */
+function topEarnerPayload(tl) {
+  if (!tl) return null;
+  const mult = Number(tl.film.multiplier);
+  const matchBase = mult > 0 ? tl.matchPoints / mult : tl.matchPoints;
+  return {
+    team: tl.team,
+    film: tl.film,
+    points: tl.points,
+    matchPoints: tl.matchPoints,
+    progressionPoints: tl.progressionPoints,
+    goals: tl.goals,
+    matchBase,
+    multiplier: mult,
+    equation: `${fmtPtsFull(matchBase)} × ${mult.toFixed(2)} = ${fmtPtsFull(tl.matchPoints)}`,
+  };
 }
 
 function playersSegment(ctx) {
@@ -298,7 +318,7 @@ function playersSegment(ctx) {
     progressionPoints: rp.standing.progressionPoints,
     goals: rp.standing.goalsScored,
     squadSize: rp.teamLines.length,
-    topTeam: rp.teamLines[0] ?? null,
+    topTeam: topEarnerPayload(rp.teamLines[0] ?? null),
     epithet: epithetFor(rp),
   }));
 }
@@ -389,60 +409,159 @@ function carrySegment(ctx) {
   ];
 }
 
+/** Sum upset bonuses per player (raw +3s × that team's Cage multiplier). */
+function upsetTallies(ctx) {
+  return ctx.ranked
+    .map((rp) => {
+      let raw = 0;
+      let after = 0;
+      let count = 0;
+      const samples = [];
+      for (const tl of rp.teamLines) {
+        for (const h of tl.highlights) {
+          const p = parseHighlight(h);
+          if (!p?.isUpset) continue;
+          const m = String(p.notes).match(/upset vs pot \d+ \+(\d+)/);
+          const bonus = m ? Number(m[1]) : 3;
+          const bonusAfter = bonus * Number(tl.film.multiplier);
+          raw += bonus;
+          after += bonusAfter;
+          count += 1;
+          samples.push({
+            team: tl.team,
+            film: tl.film,
+            bonusAfter,
+            score: `${p.goalsFor}–${p.goalsAgainst}`,
+            oppCode: p.oppCode,
+          });
+        }
+      }
+      samples.sort((a, b) => b.bonusAfter - a.bonusAfter);
+      return { player: rp.player, rank: rp.rank, raw, after, count, samples };
+    })
+    .filter((t) => t.count > 0)
+    .sort((a, b) => b.after - a.after || b.count - a.count);
+}
+
+function underdogSegment(ctx) {
+  const tallies = upsetTallies(ctx);
+  const top = tallies[0];
+  if (!top) return [];
+  const sample = top.samples[0];
+  const opp = sample ? ctx.teamsByCode.get(sample.oppCode) : null;
+  return [
+    {
+      ...base("underdog", "awards", top.player.color),
+      kind: "underdog",
+      eyebrow: "Biggest underdog",
+      player: top.player,
+      rank: top.rank,
+      upsetCount: top.count,
+      upsetPtsLabel: fmtPtsFull(top.after),
+      rawBonusLabel: `+${top.raw} raw`,
+      headline: top.player.name,
+      blurb:
+        top.count === 1
+          ? "One giant-killing. Multiplied."
+          : `${top.count} upsets · lower pots punching up.`,
+      sample: sample
+        ? {
+            label: `${sample.team.flag} ${sample.team.name} ${sample.score} ${opp ? opp.name : sample.oppCode}`,
+            film: sample.film.title,
+            pts: `+${fmtPtsFull(sample.bonusAfter)} from the upset bonus`,
+          }
+        : null,
+    },
+  ];
+}
+
+/** Spotlight 2nd + 3rd so the ceremony is not only Roman. */
+function chaseSegment(ctx) {
+  const pack = ctx.ranked.slice(1, 3);
+  if (!pack.length) return [];
+  return [
+    {
+      ...base("chase", "awards", pack[0].player.color),
+      kind: "chase",
+      eyebrow: "The chase",
+      headline: pack.length === 1 ? "Runner-up" : "Silver and bronze",
+      rows: pack.map((rp) => {
+        const top = topEarnerPayload(rp.teamLines[0] ?? null);
+        return {
+          rank: rp.rank,
+          player: rp.player,
+          totalLabel: fmtPtsFull(rp.standing.total),
+          matchLabel: fmtPtsFull(rp.standing.matchPoints),
+          progLabel: String(rp.standing.progressionPoints),
+          topTeam: top,
+          line: top
+            ? `${top.team.flag} ${top.team.name} · ${top.film.title} · ${top.equation}`
+            : null,
+        };
+      }),
+    },
+  ];
+}
+
 function superlativesSegment(ctx) {
   const slides = [];
-  const upsets = [];
-  for (const tl of ctx.teamLines) {
-    for (const h of tl.highlights) {
-      const p = parseHighlight(h);
-      if (p?.isUpset) upsets.push({ tl, p });
-    }
-  }
-  upsets.sort((a, b) => b.p.points - a.p.points);
-  if (upsets[0]) {
-    const { tl, p } = upsets[0];
-    const opp = ctx.teamsByCode.get(p.oppCode);
+  const champId = ctx.ranked[0]?.player.id;
+
+  // Prefer awards that land on someone other than the champion when possible.
+  const byGoalsPlayer = [...ctx.ranked].sort(
+    (a, b) => b.standing.goalsScored - a.standing.goalsScored,
+  );
+  const goalsPick =
+    byGoalsPlayer.find((rp) => rp.player.id !== champId && rp.standing.goalsScored > 0) ??
+    byGoalsPlayer[0];
+  if (goalsPick && goalsPick.standing.goalsScored > 0) {
     slides.push({
-      ...base("sup-upset", "awards", tl.owner.color),
+      ...base("sup-goals", "awards", goalsPick.player.color),
       kind: "superlative",
-      award: "Biggest upset haul",
-      winnerLabel: `${tl.team.flag} ${tl.team.name} ${p.goalsFor}–${p.goalsAgainst} ${opp ? opp.name : p.oppCode}`,
-      detail: `${tl.film.title} · ${tl.owner.name}`,
-      value: `+${fmtPtsFull(p.points)} pts`,
-      owner: tl.owner,
+      award: "Goals factory",
+      winnerLabel: goalsPick.player.name,
+      detail: `${goalsPick.standing.goalsScored} goals across the squad`,
+      value: `${goalsPick.standing.goalsScored} GF`,
+      owner: goalsPick.player,
     });
   }
 
-  const byGoals = [...ctx.teamLines].sort((a, b) => b.goals - a.goals);
-  if (byGoals[0] && byGoals[0].goals > 0) {
-    const tl = byGoals[0];
+  // Cursed film that still paid: lowest multiplier among each player's top earner,
+  // but only if that player isn't already the underdog slide's star and finished well.
+  const cursed = ctx.ranked
+    .map((rp) => {
+      const top = rp.teamLines[0];
+      if (!top) return null;
+      return { rp, top, mult: Number(top.film.multiplier) };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.mult - b.mult);
+  const cursePick = cursed.find((c) => c.rp.rank <= 3);
+  if (cursePick) {
+    const { rp, top, mult } = cursePick;
     slides.push({
-      ...base("sup-goals", "awards", tl.owner.color),
+      ...base("sup-curse", "awards", rp.player.color),
       kind: "superlative",
-      award: "Team golden boot",
-      winnerLabel: `${tl.team.flag} ${tl.team.name}`,
-      detail: `${tl.goals} goals · ${tl.owner.name} · ${tl.film.title}`,
-      value: `${tl.goals} GF`,
-      owner: tl.owner,
+      award: "Cage curse, still climbing",
+      winnerLabel: `${top.team.flag} ${top.team.name} · ${top.film.title}`,
+      detail: `${rp.player.name} finished #${rp.rank} on a ×${mult.toFixed(2)} film`,
+      value: `×${mult.toFixed(2)}`,
+      owner: rp.player,
     });
   }
 
   const byProg = [...ctx.teamLines].sort((a, b) => b.progressionPoints - a.progressionPoints);
   if (byProg[0] && byProg[0].progressionPoints > 0) {
     const tl = byProg[0];
-    // Skip if it's the same story as carry's team and we already have 2.
-    const already = slides.some((s) => s.winnerLabel.includes(tl.team.name));
-    if (!already || slides.length < 2) {
-      slides.push({
-        ...base("sup-prog", "awards", tl.owner.color),
-        kind: "superlative",
-        award: "Deepest run",
-        winnerLabel: `${tl.team.flag} ${tl.team.name}`,
-        detail: `${tl.progressionPoints} progression pts · ${tl.owner.name}`,
-        value: `+${tl.progressionPoints}`,
-        owner: tl.owner,
-      });
-    }
+    slides.push({
+      ...base("sup-prog", "awards", tl.owner.color),
+      kind: "superlative",
+      award: "Deepest run",
+      winnerLabel: `${tl.team.flag} ${tl.team.name}`,
+      detail: `${tl.progressionPoints} progression pts · ${tl.owner.name}`,
+      value: `+${tl.progressionPoints}`,
+      owner: tl.owner,
+    });
   }
 
   return slides.slice(0, 3);
@@ -499,6 +618,8 @@ export function buildCeremonyDeck(snap) {
     ...filmReelSegment(ctx),
     ...playersSegment(ctx),
     ...standingsSegment(ctx),
+    ...underdogSegment(ctx),
+    ...chaseSegment(ctx),
     ...carrySegment(ctx),
     ...superlativesSegment(ctx),
     ...championSegment(ctx),
@@ -641,11 +762,86 @@ const renderers = {
       h("p", { className: "epithet" }, s.epithet),
       top
         ? h(
-            "p",
-            { className: "top-team" },
-            `${top.team.flag} ${top.team.name} · ${top.film.title} · ${fmtPtsFull(top.points)} pts`,
+            "div",
+            { className: "top-earner" },
+            h("p", { className: "top-earner-label" }, "Top earner"),
+            h(
+              "p",
+              { className: "top-team" },
+              `${top.team.flag} ${top.team.name} · ${top.film.title}`,
+            ),
+            h("p", { className: "top-equation" }, top.equation),
+            h(
+              "p",
+              { className: "top-prog" },
+              `match ${fmtPtsFull(top.matchPoints)} · +${top.progressionPoints} progression`,
+            ),
           )
         : null,
+    );
+  },
+
+  underdog(s) {
+    return h(
+      "article",
+      { className: "slide slide-underdog", style: { "--accent": s.accent } },
+      h("p", { className: "eyebrow" }, s.eyebrow),
+      h(
+        "div",
+        { className: "underdog-hero" },
+        avatarEl(s.player, "av av-lg"),
+        h("h2", { className: "headline" }, s.headline),
+      ),
+      h("p", { className: "award-value" }, s.upsetPtsLabel),
+      h(
+        "p",
+        { className: "caption" },
+        `${s.upsetCount} upset${s.upsetCount === 1 ? "" : "s"} · ${s.rawBonusLabel} before the Cage ×`,
+      ),
+      h("p", { className: "epithet" }, s.blurb),
+      s.sample
+        ? h(
+            "div",
+            { className: "underdog-sample" },
+            h("p", { className: "top-earner-label" }, "Biggest single bite"),
+            h("p", { className: "top-team" }, s.sample.label),
+            h("p", { className: "top-equation" }, s.sample.pts),
+            h("p", { className: "note" }, s.sample.film),
+          )
+        : null,
+    );
+  },
+
+  chase(s) {
+    return h(
+      "article",
+      { className: "slide slide-chase", style: { "--accent": s.accent } },
+      h("p", { className: "eyebrow" }, s.eyebrow),
+      h("h2", { className: "headline" }, s.headline),
+      h(
+        "ul",
+        { className: "chase-list" },
+        ...s.rows.map((r) =>
+          h(
+            "li",
+            {},
+            h(
+              "div",
+              { className: "chase-head" },
+              h("span", { className: "ft-rank" }, `#${r.rank}`),
+              avatarEl(r.player, "av av-sm"),
+              h("span", { className: "ft-name" }, r.player.name),
+              h("span", { className: "ft-pts" }, r.totalLabel),
+            ),
+            r.line ? h("p", { className: "chase-line" }, r.line) : null,
+            h(
+              "p",
+              { className: "note" },
+              `${r.matchLabel} match · +${r.progLabel} progression`,
+            ),
+          ),
+        ),
+      ),
     );
   },
 

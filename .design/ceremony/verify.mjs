@@ -29,6 +29,8 @@ assert(kinds.includes("uniqueness"), "has uniqueness");
 assert(kinds.includes("filmReel"), "has filmReel");
 assert(kinds.filter((k) => k === "playerCard").length === 5, "five playerCards");
 assert(kinds.includes("standings"), "has standings");
+assert(kinds.includes("underdog"), "has underdog");
+assert(kinds.includes("chase"), "has chase");
 assert(kinds.includes("carry"), "has carry");
 assert(kinds.some((k) => k === "superlative"), "has superlative");
 assert(kinds.includes("champion"), "has champion");
@@ -38,6 +40,21 @@ const playerOrder = deck.slides.filter((s) => s.kind === "playerCard").map((s) =
 assert(
   JSON.stringify(playerOrder) === JSON.stringify(["Ed", "Tom", "Jack", "Matt", "Roman"]),
   `player reveal order Ed→Tom→Jack→Matt→Roman (got ${playerOrder.join("→")})`,
+);
+
+const underdog = deck.slides.find((s) => s.kind === "underdog");
+assert(underdog?.player?.name === "Jack", `underdog is Jack (got ${underdog?.player?.name})`);
+assert(underdog?.upsetCount >= 1, `underdog has upset count (got ${underdog?.upsetCount})`);
+
+const chase = deck.slides.find((s) => s.kind === "chase");
+assert(chase?.rows?.length === 2, `chase has 2 rows (got ${chase?.rows?.length})`);
+assert(chase?.rows?.[0]?.player?.name === "Matt", "chase lead is Matt");
+assert(chase?.rows?.[1]?.player?.name === "Jack", "chase second is Jack");
+
+const playerCards = deck.slides.filter((s) => s.kind === "playerCard");
+assert(
+  playerCards.every((s) => s.topTeam && String(s.topTeam.equation).includes("×")),
+  "each playerCard top earner has multiplier equation",
 );
 
 const carry = deck.slides.find((s) => s.kind === "carry");

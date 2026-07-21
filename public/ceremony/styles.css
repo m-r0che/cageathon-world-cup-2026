@@ -334,7 +334,72 @@ html, body {
   font-variant-numeric: tabular-nums;
 }
 .epithet { color: var(--text); font-size: 1.05rem; }
-.top-team { margin-top: 8px; }
+.top-team { margin-top: 4px; }
+.top-earner {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 34rem;
+}
+.top-earner-label {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+}
+.top-equation {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(1.05rem, 4.2vw, 1.35rem);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.top-prog {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.slide-underdog,
+.slide-chase { justify-content: center; }
+.underdog-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.underdog-sample {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.chase-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.chase-head {
+  display: grid;
+  grid-template-columns: 28px 40px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.chase-line {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text);
+  line-height: 1.35;
+}
 
 /* Standings table */
 .final-table {
