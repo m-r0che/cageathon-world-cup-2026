@@ -221,7 +221,10 @@ html, body {
 }
 
 /* Big number */
-.slide-bignum { justify-content: center; }
+.slide-bignum,
+.slide-award,
+.slide-carry,
+.slide-unique { justify-content: center; }
 .bignum-row {
   display: flex;
   align-items: baseline;

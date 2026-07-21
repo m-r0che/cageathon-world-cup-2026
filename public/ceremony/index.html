@@ -38,7 +38,12 @@
   <div id="root"></div>
   <script type="module">
     import { startCeremony } from "./ceremony.js";
-    startCeremony(document.getElementById("root")).catch(() => {});
+    startCeremony(document.getElementById("root")).catch((err) => {
+      const root = document.getElementById("root");
+      if (!root) return;
+      const msg = err instanceof Error ? err.message : String(err);
+      root.innerHTML = `<p class="boot-err">Ceremony failed to load.<br/><a href="/">Back to the Cup</a><br/><span style="color:#9b9aa3;font-size:12px">${msg}</span></p>`;
+    });
   </script>
 </body>
 </html>

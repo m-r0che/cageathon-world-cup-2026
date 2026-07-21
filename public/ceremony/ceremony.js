@@ -324,7 +324,13 @@ function standingsSegment(ctx) {
 }
 
 function findFinalMatch(recent) {
-  return recent.find((m) => m && m.stage === "FINAL" && m.status === "FINISHED") ?? null;
+  // Prefer the chronologically latest FINAL. football-data has labeled some
+  // knockout fixtures as FINAL before the cup final itself.
+  const finals = (recent ?? []).filter(
+    (m) => m && m.stage === "FINAL" && m.status === "FINISHED",
+  );
+  if (!finals.length) return null;
+  return finals.slice().sort((a, b) => String(b.utcDate).localeCompare(String(a.utcDate)))[0];
 }
 
 function winnerCodeFromMatch(m) {
