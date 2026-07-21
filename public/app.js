@@ -459,9 +459,18 @@ function renderSquads(state) {
   }
 }
 
+function renderCeremonyLink(s) {
+  const ready = Boolean(s.standings?.rows?.length);
+  const banner = $("#ceremony-banner");
+  const foot = $("#ceremony-link");
+  if (banner) banner.hidden = !ready;
+  if (foot) foot.hidden = !ready;
+}
+
 function renderAll(s) {
   state = s;
   renderCageStrip(s);
+  renderCeremonyLink(s);
   renderRace(s);
   renderStandings(s);
   renderBreakdown(s);

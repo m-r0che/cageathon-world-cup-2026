@@ -722,6 +722,41 @@ a.rt:hover, a.rt:focus-visible {
 .rules h3 { font-size: 18px; margin: 18px 0 6px; color: var(--accent); }
 .rules ul { padding-left: 1.2em; }
 
+.ceremony-banner {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  text-decoration: none;
+  color: var(--text);
+  background: linear-gradient(105deg, rgba(255, 203, 92, 0.14), rgba(255, 203, 92, 0.04));
+  border: 1px solid rgba(255, 203, 92, 0.28);
+  border-radius: 6px;
+}
+.ceremony-banner[hidden] { display: none; }
+.ceremony-banner-kicker {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+}
+.ceremony-banner-label {
+  font-family: "Fraunces", serif;
+  font-weight: 700;
+  font-size: 15px;
+}
+.ceremony-foot {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+}
+.ceremony-foot[hidden] { display: none; }
+.ceremony-foot:hover { text-decoration: underline; }
+
 footer {
   text-align: center; color: var(--muted); font-size: 12px;
   padding: 24px 20px 8px; display: flex; flex-direction: column; gap: 4px;
