@@ -23,15 +23,13 @@ COMPETITION_ID = "2000"        # football-data.org World Cup
 DRAW_SEED = "cageathon-reveal-2026"  # changing this re-derives the draw (requires POST /api/draw?force=1)
 TOURNAMENT_START = "2026-06-11"
 
-# Cron ticks every 15 min, but the worker only spends an API call when a match
-# is live, just finished, or about to kick off (plus a ~3h baseline keepalive) —
-# see shouldPoll() in worker.ts. Keeps scores fresh during play while sitting
-# well inside the free tier's ~50-req/day cap (quiet days cost only ~8 req/day).
+# Tournament over — cron disabled so we stop spending football-data quota.
+# Manual refresh still works: POST /api/refresh with the admin token.
 # Secrets needed:
 #   wrangler secret put FOOTBALL_DATA_API_KEY
 #   wrangler secret put ADMIN_TOKEN
 [triggers]
-crons = ["*/15 * * * *"]
+crons = []
 
 [observability]
 enabled = true
