@@ -395,7 +395,7 @@ export default {
       // Fail fast on missing/placeholder bindings — gives a usable error instead of a Cloudflare-internal one.
       if (!env.WC) {
         return json({
-          error: "KV namespace `WC` is not bound. Run `wrangler kv namespace create WC` and paste the id into wrangler.toml.",
+          error: "KV namespace `WC` is not bound. Run `wrangler kv namespace create WC` and paste the id into wrangler.local.toml.",
         }, { status: 500 });
       }
       const key = `${req.method} ${url.pathname}`;

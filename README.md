@@ -13,25 +13,71 @@ Runs entirely on Cloudflare: Worker + Static Assets + KV + Cron Trigger. No thir
 
 ## Bootstrap (production)
 
+Run `npm install`.
+
 ```bash
 npm install
+```
 
-# 1. KV — note the namespace IDs printed, paste them into wrangler.toml
-wrangler kv namespace create WC
-wrangler kv namespace create WC --preview
+Copy `wrangler.local.toml.example` to `wrangler.local.toml`.
 
-# 2. Secrets
+```bash
+cp wrangler.local.toml.example wrangler.local.toml
+```
+
+### Bind existing production
+
+If you only deploy by pushing to `main`, skip `wrangler.local.toml`.
+Workers Builds inherits the live `WC` binding.
+
+If you deploy from a laptop, run `wrangler kv namespace list`.
+Put the current `WC` namespace id into `wrangler.local.toml`.
+If you have a preview id, put that preview id into `wrangler.local.toml` as well.
+Do not create a new namespace.
+A new namespace orphans live draw and matches data.
+
+### Bind a new Cloudflare account
+
+Run `wrangler kv namespace create WC`.
+Then run `wrangler kv namespace create WC --preview`.
+Paste the printed ids into `wrangler.local.toml`.
+
+### Put secrets
+
+```bash
 wrangler secret put FOOTBALL_DATA_API_KEY      # free key from football-data.org
 wrangler secret put ADMIN_TOKEN                # any long random string
+```
 
-# 3. Deploy
-npx wrangler deploy
+### Deploy the worker
 
-# 4. Lock in the draw (idempotent — needs ?force=1 to overwrite)
+Push to `main` deploys through Cloudflare Workers Builds.
+That job runs `npx wrangler deploy` against the committed `wrangler.toml`.
+The public file names `binding = "WC"` and does not include a namespace id.
+Wrangler then inherits the `WC` binding already on the live Worker.
+Do not create a new namespace for that Worker.
+
+To deploy from your laptop, pin the ids and pass the local file.
+
+```bash
+npx wrangler deploy -c wrangler.local.toml
+```
+
+`npx wrangler dev` can use the committed `wrangler.toml`.
+Local KV does not need remote ids.
+
+Lock in the draw.
+The draw write is idempotent.
+Pass `?force=1` to overwrite it.
+
+```bash
 curl -X POST https://cageathon-world-cup-2026.<acct>.workers.dev/api/draw \
   -H "authorization: Bearer $ADMIN_TOKEN"
+```
 
-# 5. Pull live match data
+Pull live match data.
+
+```bash
 curl -X POST https://cageathon-world-cup-2026.<acct>.workers.dev/api/refresh \
   -H "authorization: Bearer $ADMIN_TOKEN"
 ```
@@ -101,8 +147,12 @@ npx wrangler dev
 
 ## Deploy
 
+A push to `main` runs `npx wrangler deploy` in Workers Builds and inherits the live `WC` binding.
+
+To deploy from a laptop, pin ids in `wrangler.local.toml` first.
+
 ```bash
-npx wrangler deploy
+npx wrangler deploy -c wrangler.local.toml
 ```
 
 ## Scoring summary
@@ -161,4 +211,5 @@ public/
   cage/                 # decorative Cage portraits for the desktop scatter
   players/              # drop avatars here (p1.jpg ... p5.jpg)
 wrangler.toml
+wrangler.local.toml.example
 ```
