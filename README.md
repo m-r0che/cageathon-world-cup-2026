@@ -27,7 +27,10 @@ cp wrangler.local.toml.example wrangler.local.toml
 
 ### Bind existing production
 
-Run `wrangler kv namespace list`.
+If you only deploy by pushing to `main`, skip `wrangler.local.toml`.
+Workers Builds inherits the live `WC` binding.
+
+If you deploy from a laptop, run `wrangler kv namespace list`.
 Put the current `WC` namespace id into `wrangler.local.toml`.
 If you have a preview id, put that preview id into `wrangler.local.toml` as well.
 Do not create a new namespace.
@@ -48,7 +51,13 @@ wrangler secret put ADMIN_TOKEN                # any long random string
 
 ### Deploy the worker
 
-Deploy with `npx wrangler deploy -c wrangler.local.toml`.
+Push to `main` deploys through Cloudflare Workers Builds.
+That job runs `npx wrangler deploy` against the committed `wrangler.toml`.
+The public file names `binding = "WC"` and does not include a namespace id.
+Wrangler then inherits the `WC` binding already on the live Worker.
+Do not create a new namespace for that Worker.
+
+To deploy from your laptop, pin the ids and pass the local file.
 
 ```bash
 npx wrangler deploy -c wrangler.local.toml
@@ -137,6 +146,10 @@ npx wrangler dev
 `wrangler dev` uses local KV by default. Make a test draw with the same curl as above pointed at `http://localhost:8787`.
 
 ## Deploy
+
+A push to `main` runs `npx wrangler deploy` in Workers Builds and inherits the live `WC` binding.
+
+To deploy from a laptop, pin ids in `wrangler.local.toml` first.
 
 ```bash
 npx wrangler deploy -c wrangler.local.toml

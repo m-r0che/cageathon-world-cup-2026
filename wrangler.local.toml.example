@@ -1,5 +1,6 @@
 # Cageathon World Cup 2026 — sweepstake worker
-# Copy this file to wrangler.local.toml. That file is gitignored.
+# Copy this file to wrangler.local.toml when you deploy from a laptop. That file is gitignored.
+# A push to main does not need this file. Workers Builds inherits the live WC binding.
 # Existing production must reuse the current WC namespace. Run `wrangler kv namespace list` and paste those ids.
 # Do not run `wrangler kv namespace create` for an existing deploy. A new namespace orphans live draw and matches data.
 # Account comes from `wrangler login` or CLOUDFLARE_ACCOUNT_ID. Do not set account_id.
