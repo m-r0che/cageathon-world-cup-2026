@@ -16,7 +16,6 @@ binding = "ASSETS"
 not_found_handling = "single-page-application"
 
 # KV: draw, matches cache, last_updated, players roster
-# Create with:  wrangler kv namespace create WC
 [[kv_namespaces]]
 binding = "WC"
 id = "<YOUR_KV_NAMESPACE_ID>"
