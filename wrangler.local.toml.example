@@ -1,4 +1,8 @@
 # Cageathon World Cup 2026 — sweepstake worker
+# Copy this file to wrangler.local.toml. That file is gitignored.
+# Existing production must reuse the current WC namespace. Run `wrangler kv namespace list` and paste those ids.
+# Do not run `wrangler kv namespace create` for an existing deploy. A new namespace orphans live draw and matches data.
+# Account comes from `wrangler login` or CLOUDFLARE_ACCOUNT_ID. Do not set account_id.
 name = "cageathon-world-cup-2026"
 main = "src/worker.ts"
 compatibility_date = "2026-01-15"
@@ -12,9 +16,10 @@ not_found_handling = "single-page-application"
 
 # KV: draw, matches cache, last_updated, players roster
 # Create with:  wrangler kv namespace create WC
-# KV ids belong in gitignored wrangler.local.toml (copy from wrangler.local.toml.example).
 [[kv_namespaces]]
 binding = "WC"
+id = "<YOUR_KV_NAMESPACE_ID>"
+preview_id = "<YOUR_KV_PREVIEW_ID>"
 
 [vars]
 COMPETITION_ID = "2000"        # football-data.org World Cup
